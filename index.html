@@ -1,810 +1,575 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم الأدمن — نظام البوفيه</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap">
-    <script>
-        document.documentElement.classList.add('auth-pending');
-        (function checkAuth() {
-            const raw = sessionStorage.getItem('user');
-            if (!raw) { window.location.replace('/index.html'); return; }
-            try {
-                const user = JSON.parse(raw);
-                if (!user || !user.username || user.user_type !== 'admin') {
-                    window.location.replace('/index.html');
-                }
-            } catch(e) { window.location.replace('/index.html'); }
-        })();
-    </script>
-    <style>
-        html.auth-pending body { visibility: hidden; }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+import { useState, useMemo, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { Users, Wifi, TrendingUp, AlertCircle, Plus, Search, RefreshCw, ChevronDown, X, Trash2, PhoneCall, LogOut, Eye, EyeOff, Lock, User } from "lucide-react";
 
-        :root {
-            --green: #02cf65;
-            --green-dark: #009447;
-            --green-bg: #ecfdf5;
-            --red: #ef4444;
-            --red-bg: #fef2f2;
-            --amber: #f59e0b;
-            --amber-bg: #fffbeb;
-            --blue: #2563eb;
-            --blue-bg: #eff6ff;
-            --purple: #9333ea;
-            --purple-bg: #f3e8ff;
-            --surface: #ffffff;
-            --bg: #f1f5f9;
-            --border: #e2e8f0;
-            --text: #0f172a;
-            --muted: #64748b;
-            --radius: 1rem;
-            --sidebar-w: 17rem;
-        }
+// ─── إعدادات الاتصال بقاعدة البيانات ───────────────────────────────────────────
+// استبدل هذه القيم بروابط مشروعك الخاص من إعدادات سوبابيس (API Settings)
+const SUPABASE_URL = "https://udjnzsaypjcyxgbjngxe.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkam56c2F5cGpjeXhnYmpuZ3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NTgyOTUsImV4cCI6MjA5ODIzNDI5NX0.ktQoyU0XcPtEkdVF_C06B2yKLyZDZV5hSLnR-z9DFrs";
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg);
-            min-height: 100vh;
-            color: var(--text);
-        }
+const CREDENTIALS = { username: "admin", password: "1234" };
 
-        a { color: inherit; text-decoration: none; }
-        button { font-family: inherit; }
+// ─── Login Screen ─────────────────────────────────────────────────────────────
+function LoginScreen({ onLogin }: { onLogin: () => void }) {
+  const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [error, setError] = useState("");
+  const [shake, setShake] = useState(false);
 
-        /* ============== LAYOUT SHELL ============== */
-        .app-shell {
-            display: grid;
-            grid-template-columns: var(--sidebar-w) 1fr;
-            min-height: 100vh;
-        }
+  function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (user === CREDENTIALS.username && pass === CREDENTIALS.password) {
+      localStorage.setItem("net-auth", "1");
+      onLogin();
+    } else {
+      setError("اسم المستخدم أو كلمة المرور غلط");
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
+    }
+  }
 
-        /* ============== SIDEBAR ============== */
-        .sidebar {
-            background: linear-gradient(180deg, #052e1c, #06381f 40%, #07210f);
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            position: sticky;
-            top: 0;
-            height: 100vh;
-            overflow-y: auto;
-        }
-        .sidebar-brand {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 1.4rem 1.3rem;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
-        .sidebar-brand-icon {
-            width: 2.6rem; height: 2.6rem;
-            border-radius: 0.75rem;
-            background: linear-gradient(135deg, #02cf65, #009447);
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-        .sidebar-brand-icon svg { width: 1.4rem; height: 1.4rem; color: #fff; }
-        .sidebar-brand-text { font-weight: 700; font-size: 1rem; line-height: 1.3; }
-        .sidebar-brand-sub { font-size: 0.72rem; color: rgba(255,255,255,0.5); margin-top: 0.1rem; }
+  return (
+    <div dir="rtl" className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4 font-[Cairo,sans-serif]">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-sky-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-sky-500/30">
+            <Wifi className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-extrabold text-white">إدارة استهلاك النت</h1>
+          <p className="text-slate-400 text-sm mt-1">سجّل دخولك للمتابعة</p>
+        </div>
 
-        .sidebar-user {
-            display: flex; align-items: center; gap: 0.7rem;
-            padding: 1.1rem 1.3rem;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
-        }
-        .sidebar-user-avatar {
-            width: 2.4rem; height: 2.4rem;
-            border-radius: 0.65rem;
-            background: rgba(255,255,255,0.1);
-            display: flex; align-items: center; justify-content: center;
-            font-weight: 700; flex-shrink: 0;
-        }
-        .sidebar-user-name { font-weight: 600; font-size: 0.88rem; }
-        .sidebar-user-role {
-            font-size: 0.72rem; color: #6ee7b7;
-            display: flex; align-items: center; gap: 0.3rem;
-        }
-
-        .sidebar-nav {
-            flex: 1;
-            padding: 0.9rem 0.8rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-        }
-        .nav-item {
-            display: flex; align-items: center; gap: 0.75rem;
-            padding: 0.75rem 0.9rem;
-            border-radius: 0.7rem;
-            color: rgba(255,255,255,0.65);
-            font-size: 0.9rem; font-weight: 600;
-            cursor: pointer;
-            border: none; background: transparent;
-            width: 100%;
-            text-align: right;
-            transition: all 0.15s ease;
-        }
-        .nav-item svg { width: 1.15rem; height: 1.15rem; flex-shrink: 0; }
-        .nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
-        .nav-item.active {
-            background: linear-gradient(135deg, #02cf65, #009447);
-            color: #fff;
-            box-shadow: 0 4px 14px -4px rgba(2,207,101,0.5);
-        }
-        .nav-item .nav-count {
-            margin-right: auto;
-            background: rgba(255,255,255,0.15);
-            border-radius: 999px;
-            font-size: 0.72rem;
-            padding: 0.1rem 0.5rem;
-            font-weight: 700;
-        }
-        .nav-item.active .nav-count { background: rgba(255,255,255,0.25); }
-
-        .sidebar-footer {
-            padding: 0.9rem 1rem;
-            border-top: 1px solid rgba(255,255,255,0.08);
-        }
-        .btn-logout-sidebar {
-            display: flex; align-items: center; gap: 0.6rem;
-            width: 100%;
-            padding: 0.7rem 0.9rem;
-            border-radius: 0.7rem;
-            background: rgba(239,68,68,0.12);
-            color: #fca5a5;
-            border: 1px solid rgba(239,68,68,0.25);
-            font-size: 0.85rem; font-weight: 700;
-            cursor: pointer;
-        }
-        .btn-logout-sidebar:hover { background: rgba(239,68,68,0.2); }
-        .btn-logout-sidebar svg { width: 1rem; height: 1rem; }
-
-        /* ============== MAIN AREA ============== */
-        .main-area { display: flex; flex-direction: column; min-height: 100vh; }
-
-        .topbar-mobile {
-            display: none;
-            background: linear-gradient(135deg, #02cf65, #009447);
-            color: #fff;
-            padding: 1rem 1.2rem;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .topbar-mobile button {
-            background: rgba(255,255,255,0.15);
-            border: none; color: #fff;
-            width: 2.4rem; height: 2.4rem;
-            border-radius: 0.6rem;
-            display: flex; align-items: center; justify-content: center;
-        }
-        .topbar-mobile svg { width: 1.3rem; height: 1.3rem; }
-
-        .content {
-            flex: 1;
-            padding: 1.75rem 2rem 3rem;
-            max-width: 1500px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .page-header {
-            display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 1.5rem;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        .page-title { font-size: 1.5rem; font-weight: 700; }
-        .page-subtitle { font-size: 0.9rem; color: var(--muted); margin-top: 0.2rem; }
-
-        .panel { display: none; }
-        .panel.active { display: block; animation: fadeIn 0.25s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* ============== BUTTONS ============== */
-        .btn {
-            display: inline-flex; align-items: center; gap: 0.5rem;
-            padding: 0.65rem 1.1rem;
-            border-radius: 0.7rem;
-            font-size: 0.85rem; font-weight: 700;
-            cursor: pointer; border: none;
-            transition: all 0.15s ease;
-            white-space: nowrap;
-        }
-        .btn svg { width: 1rem; height: 1rem; }
-        .btn-primary {
-            background: linear-gradient(135deg, #02cf65, #009447);
-            color: #fff;
-            box-shadow: 0 6px 16px -6px rgba(2,150,70,0.4);
-        }
-        .btn-primary:hover { transform: translateY(-1px); }
-        .btn-secondary { background: #f1f5f9; color: #475569; border: 1px solid var(--border); }
-        .btn-secondary:hover { background: #e2e8f0; }
-        .btn-danger { background: var(--red-bg); color: #991b1b; border: 1px solid #fca5a5; }
-        .btn-danger:hover { background: #fee2e2; }
-        .btn-sm { padding: 0.45rem 0.8rem; font-size: 0.78rem; }
-        .btn-icon { padding: 0.5rem; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        /* ============== STAT CARDS ============== */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-        }
-        .stat-card {
-            background: var(--surface);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            padding: 1.3rem 1.4rem;
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        .stat-icon {
-            width: 3rem; height: 3rem;
-            border-radius: 0.85rem;
-            display: flex; align-items: center; justify-content: center;
-            flex-shrink: 0;
-        }
-        .stat-icon svg { width: 1.4rem; height: 1.4rem; }
-        .stat-icon.green { background: var(--green-bg); color: #047857; }
-        .stat-icon.blue { background: var(--blue-bg); color: var(--blue); }
-        .stat-icon.purple { background: var(--purple-bg); color: var(--purple); }
-        .stat-icon.amber { background: var(--amber-bg); color: #92400e; }
-        .stat-icon.red { background: var(--red-bg); color: #991b1b; }
-        .stat-value { font-size: 1.55rem; font-weight: 700; }
-        .stat-label { font-size: 0.82rem; color: var(--muted); margin-top: 0.15rem; }
-
-        /* ============== CARD ============== */
-        .card {
-            background: var(--surface);
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            overflow: hidden;
-            margin-bottom: 1.25rem;
-        }
-        .card-header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 1.1rem 1.4rem;
-            border-bottom: 1px solid #f1f5f9;
-            flex-wrap: wrap; gap: 0.75rem;
-        }
-        .card-header-title { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1rem; }
-        .card-header-title svg { width: 1.1rem; height: 1.1rem; color: var(--green-dark); }
-        .card-body { padding: 1.4rem; }
-        .card-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; }
-
-        /* ============== TABLE ============== */
-        .table-wrap { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
-        thead th {
-            background: #f8fafc; color: #475569; font-weight: 700;
-            padding: 0.8rem 1rem; text-align: center; white-space: nowrap;
-            border-bottom: 2px solid #eef2f6;
-        }
-        tbody td { padding: 0.75rem 1rem; text-align: center; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
-        tbody tr:hover { background: #f8fafc; }
-        tbody tr:last-child td { border-bottom: none; }
-        .cell-name { font-weight: 700; }
-        .cell-muted { color: var(--muted); font-size: 0.82rem; }
-
-        .pill {
-            display: inline-flex; align-items: center; gap: 0.3rem;
-            padding: 0.22rem 0.7rem; border-radius: 999px;
-            font-size: 0.75rem; font-weight: 700;
-        }
-        .pill.green { background: var(--green-bg); color: #047857; }
-        .pill.red { background: var(--red-bg); color: #991b1b; }
-        .pill.amber { background: var(--amber-bg); color: #92400e; }
-        .pill.blue { background: var(--blue-bg); color: var(--blue); }
-        .pill.purple { background: var(--purple-bg); color: var(--purple); }
-        .pill.gray { background: #f1f5f9; color: #475569; }
-
-        select.pill-select {
-            border: none; background: transparent; font-weight: 700;
-            font-size: 0.8rem; cursor: pointer; font-family: inherit;
-            -webkit-appearance: none; appearance: none;
-            padding: 0.2rem 0.4rem;
-        }
-
-        .row-actions { display: flex; gap: 0.4rem; justify-content: center; }
-        .icon-btn {
-            width: 2.1rem; height: 2.1rem;
-            border-radius: 0.55rem;
-            border: 1px solid var(--border);
-            background: #fff;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; transition: all 0.15s ease;
-            color: var(--muted);
-        }
-        .icon-btn svg { width: 0.95rem; height: 0.95rem; }
-        .icon-btn:hover { background: #f8fafc; }
-        .icon-btn.edit:hover { color: var(--blue); border-color: #bfdbfe; }
-        .icon-btn.delete:hover { color: var(--red); border-color: #fca5a5; background: var(--red-bg); }
-        .icon-btn.view:hover { color: var(--green-dark); border-color: #6ee7b7; background: var(--green-bg); }
-
-        .qty-input {
-            width: 4.5rem; padding: 0.4rem 0.5rem;
-            border: 1px solid var(--border); border-radius: 0.5rem;
-            text-align: center; font-weight: 700; font-family: inherit;
-        }
-        .qty-input:focus { outline: none; border-color: var(--green); }
-
-        .toggle-switch {
-            position: relative; width: 2.75rem; height: 1.5rem;
-            display: inline-block; cursor: pointer;
-        }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .toggle-slider {
-            position: absolute; inset: 0;
-            background: #e2e8f0; border-radius: 999px;
-            transition: background 0.2s ease;
-        }
-        .toggle-slider::before {
-            content: ''; position: absolute;
-            width: 1.15rem; height: 1.15rem;
-            left: 0.18rem; top: 0.18rem;
-            background: #fff; border-radius: 50%;
-            transition: transform 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-        }
-        .toggle-switch input:checked + .toggle-slider { background: var(--green); }
-        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(-1.25rem); }
-
-        .empty-row { text-align: center; padding: 2.5rem 1rem; color: #94a3b8; }
-        .empty-row svg { width: 2.5rem; height: 2.5rem; margin-bottom: 0.6rem; opacity: 0.5; display: block; margin-inline: auto; }
-
-        .search-box { position: relative; min-width: 220px; }
-        .search-box input {
-            width: 100%; padding: 0.6rem 1rem 0.6rem 2.4rem;
-            border: 1px solid var(--border); border-radius: 0.7rem;
-            font-size: 0.85rem; background: #f8fafc; font-family: inherit;
-        }
-        .search-box input:focus { outline: none; border-color: var(--green); background: #fff; }
-        .search-box svg {
-            position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%);
-            width: 1rem; height: 1rem; color: #94a3b8;
-        }
-
-        .filter-date-row {
-            display: flex; align-items: end; gap: 0.85rem; flex-wrap: wrap;
-        }
-        .filter-field label { display: block; font-size: 0.8rem; font-weight: 600; color: #1e293b; margin-bottom: 0.35rem; }
-        .filter-field input[type="date"] {
-            padding: 0.55rem 0.8rem; border: 1px solid var(--border); border-radius: 0.65rem;
-            font-size: 0.85rem; font-family: inherit; background: #f8fafc;
-        }
-        .filter-field input[type="date"]:focus { outline: none; border-color: var(--green); background: #fff; }
-
-        .items-list { display: flex; flex-wrap: wrap; gap: 0.3rem; justify-content: center; max-width: 280px; margin: 0 auto; }
-        .item-chip { background: #f1f5f9; color: #334155; padding: 0.18rem 0.55rem; border-radius: 999px; font-size: 0.72rem; white-space: nowrap; }
-
-        /* ============== MODAL ============== */
-        .modal-overlay {
-            position: fixed; inset: 0; background: rgba(15,23,42,0.5);
-            display: none; align-items: center; justify-content: center;
-            z-index: 300; padding: 1rem;
-        }
-        .modal-overlay.show { display: flex; }
-        .modal-box {
-            background: #fff; border-radius: 1.1rem;
-            max-width: 480px; width: 100%;
-            max-height: 90vh; overflow-y: auto;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-            animation: modalIn 0.2s ease;
-        }
-        @keyframes modalIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
-        .modal-header {
-            display: flex; align-items: center; justify-content: space-between;
-            padding: 1.2rem 1.4rem; border-bottom: 1px solid #f1f5f9;
-        }
-        .modal-title { font-weight: 700; font-size: 1.05rem; }
-        .modal-close { background: none; border: none; cursor: pointer; color: var(--muted); padding: 0.3rem; }
-        .modal-close svg { width: 1.2rem; height: 1.2rem; }
-        .modal-body { padding: 1.4rem; }
-        .modal-footer {
-            display: flex; gap: 0.7rem; justify-content: flex-end;
-            padding: 1.1rem 1.4rem; border-top: 1px solid #f1f5f9;
-        }
-
-        .form-group { margin-bottom: 1.05rem; }
-        .form-group label { display: block; font-size: 0.85rem; font-weight: 600; color: #1e293b; margin-bottom: 0.4rem; }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%; padding: 0.65rem 0.9rem;
-            border: 1px solid var(--border); border-radius: 0.7rem;
-            font-size: 0.9rem; font-family: inherit; background: #f8fafc; color: var(--text);
-        }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-            outline: none; border-color: var(--green); background: #fff;
-            box-shadow: 0 0 0 3px rgba(2,207,101,0.12);
-        }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-
-        /* ============== TOAST ============== */
-        .toast {
-            position: fixed; top: 1.5rem; left: 50%;
-            transform: translateX(-50%) translateY(-1rem);
-            background: #0f172a; color: #fff;
-            padding: 0.85rem 1.4rem; border-radius: 0.85rem;
-            font-size: 0.9rem; font-weight: 600;
-            box-shadow: 0 10px 25px -8px rgba(0,0,0,0.35);
-            opacity: 0; pointer-events: none;
-            transition: all 0.3s ease; z-index: 400;
-            display: flex; align-items: center; gap: 0.5rem; max-width: 90vw;
-        }
-        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-        .toast.error { background: #b91c1c; }
-        .toast.success { background: #047857; }
-        .toast svg { width: 1.1rem; height: 1.1rem; flex-shrink: 0; }
-
-        .loading-spinner { display: inline-block; width: 1rem; height: 1rem; border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        .loading-spinner-lg { display: inline-block; width: 1.8rem; height: 1.8rem; border: 3px solid #e2e8f0; border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* ============== CONSUMPTION SUMMARY ============== */
-        .consumption-summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.25rem; }
-        .summary-box { border-radius: 1rem; padding: 1.3rem; text-align: center; color: #fff; }
-        .summary-box.cash { background: linear-gradient(135deg, #02cf65, #009447); }
-        .summary-box.account { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        .summary-box.total { background: linear-gradient(135deg, #1e3a8a, #1e40af); }
-        .summary-value { font-size: 1.6rem; font-weight: 700; }
-        .summary-label { font-size: 0.82rem; opacity: 0.9; margin-top: 0.25rem; }
-
-        /* ============== RESPONSIVE ============== */
-        @media (max-width: 1100px) {
-            .stats-grid { grid-template-columns: repeat(2, 1fr); }
-            .consumption-summary-grid { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 900px) {
-            .app-shell { grid-template-columns: 1fr; }
-            .sidebar {
-                position: fixed; right: 0; top: 0; height: 100vh;
-                width: var(--sidebar-w); z-index: 250;
-                transform: translateX(100%);
-                transition: transform 0.25s ease;
-            }
-            .sidebar.open { transform: translateX(0); box-shadow: -10px 0 30px rgba(0,0,0,0.2); }
-            .topbar-mobile { display: flex; }
-            .sidebar-overlay {
-                position: fixed; inset: 0; background: rgba(0,0,0,0.4);
-                z-index: 240; display: none;
-            }
-            .sidebar-overlay.show { display: block; }
-        }
-        @media (max-width: 640px) {
-            .stats-grid { grid-template-columns: 1fr 1fr; }
-            .content { padding: 1.25rem 1rem 3rem; }
-            .form-row { grid-template-columns: 1fr; }
-        }
-    </style>
-</head>
-<body>
-
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-<div class="app-shell">
-
-    <!-- ============== SIDEBAR ============== -->
-    <aside class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <div class="sidebar-brand-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6 l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/></svg>
+        <form onSubmit={handleLogin}
+          className={`bg-slate-800 rounded-2xl p-6 shadow-2xl border border-slate-700 space-y-4 transition-all ${shake ? "animate-[shake_0.4s_ease]" : ""}`}>
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5">اسم المستخدم</label>
+            <div className="relative">
+              <User className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                value={user} onChange={e => { setUser(e.target.value); setError(""); }}
+                placeholder="أدخل اسم المستخدم"
+                className="w-full bg-slate-700 border border-slate-600 rounded-xl py-3 pr-9 pl-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all"
+                autoComplete="username"
+              />
             </div>
-            <div>
-                <div class="sidebar-brand-text">نظام البوفيه</div>
-                <div class="sidebar-brand-sub">لوحة تحكم الأدمن</div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 mb-1.5">كلمة المرور</label>
+            <div className="relative">
+              <Lock className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                value={pass} onChange={e => { setPass(e.target.value); setError(""); }}
+                type={showPass ? "text" : "password"}
+                placeholder="أدخل كلمة المرور"
+                className="w-full bg-slate-700 border border-slate-600 rounded-xl py-3 pr-9 pl-9 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all"
+                autoComplete="current-password"
+              />
+              <button type="button" onClick={() => setShowPass(v => !v)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
-        </div>
+          </div>
 
-        <div class="sidebar-user">
-            <div class="sidebar-user-avatar" id="sidebarUserInitial">أ</div>
-            <div>
-                <div class="sidebar-user-name" id="sidebarUserName">مدير النظام</div>
-                <div class="sidebar-user-role">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:0.8rem;height:0.8rem;"><path d="M12 2v20M2 12h20"/></svg>
-                    مدير النظام
-                </div>
-            </div>
-        </div>
+          {error && (
+            <p className="text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-lg py-2">
+              {error}
+            </p>
+          )}
 
-        <nav class="sidebar-nav">
-            <button class="nav-item active" data-panel="overview">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
-                لوحة التحكم
-            </button>
-            <button class="nav-item" data-panel="products">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg>
-                إدارة المنتجات
-                <span class="nav-count" id="navCountProducts">12</span>
-            </button>
-            <button class="nav-item" data-panel="users">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-                إدارة المستخدمين
-                <span class="nav-count" id="navCountUsers">45</span>
-            </button>
-            <button class="nav-item" data-panel="orders">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>
-                إدارة الطلبات
-                <span class="nav-count" id="navCountOrders">8</span>
-            </button>
-        </nav>
-
-        <div class="sidebar-footer">
-            <button class="btn-logout-sidebar" id="logoutBtn">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                تسجيل الخروج
-            </button>
-        </div>
-    </aside>
-
-    <!-- ============== MAIN AREA ============== -->
-    <div class="main-area">
-
-        <div class="topbar-mobile">
-            <button id="sidebarToggle">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
-            </button>
-            <strong id="mobileTitle">لوحة التحكم</strong>
-            <span style="width:2.4rem;"></span>
-        </div>
-
-        <div class="content">
-
-            <!-- ============================================================ -->
-            <!-- PANEL 1: لوحة التحكم (نظرة عامة) -->
-            <!-- ============================================================ -->
-            <section class="panel active" id="panel-overview">
-                <div class="page-header">
-                    <div>
-                        <div class="page-title">لوحة التحكم</div>
-                        <div class="page-subtitle">نظرة عامة على البوفيه</div>
-                    </div>
-                </div>
-
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div><div class="stat-value" id="ovTotalOrders">1,240</div><div class="stat-label">إجمالي الطلبات</div></div>
-                        <div class="stat-icon blue"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></div>
-                    </div>
-                    <div class="stat-card">
-                        <div><div class="stat-value" id="ovTotalUsers">45</div><div class="stat-label">عدد المستخدمين</div></div>
-                        <div class="stat-icon purple"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-                    </div>
-                    <div class="stat-card">
-                        <div><div class="stat-value" id="ovAvailableProducts">10</div><div class="stat-label">منتجات متاحة</div></div>
-                        <div class="stat-icon green"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-                    </div>
-                    <div class="stat-card">
-                        <div><div class="stat-value" id="ovUnavailableProducts">2</div><div class="stat-label">منتجات غير متاحة</div></div>
-                        <div class="stat-icon red"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
-                    </div>
-                </div>
-
-                <div class="consumption-summary-grid">
-                    <div class="summary-box cash">
-                        <div class="summary-value"><span id="ovRevenueCash">4,250</span> ج</div>
-                        <div class="summary-label">إجمالي الإيرادات كاش</div>
-                    </div>
-                    <div class="summary-box account">
-                        <div class="summary-value"><span id="ovRevenueAccount">1,820</span> ج</div>
-                        <div class="summary-label">إجمالي الإيرادات على الحساب</div>
-                    </div>
-                    <div class="summary-box total">
-                        <div class="summary-value"><span id="ovRevenueTotal">6,070</span> ج</div>
-                        <div class="summary-label">إجمالي الإيرادات الكامل</div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-header-title">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                            آخر الطلبات المعلقة
-                        </div>
-                    </div>
-                    <div class="card-body" style="padding:0;">
-                        <div class="table-wrap">
-                            <table>
-                                <thead><tr><th>رقم الطلب</th><th>المستفيد</th><th>نوع الدفع</th><th>الإجمالي</th><th>الحالة</th><th>التاريخ</th></tr></thead>
-                                <tbody id="ovRecentOrdersBody">
-                                    <tr>
-                                        <td>#1024</td>
-                                        <td class="cell-name">أحمد ممدوح</td>
-                                        <td><span class="pill gray">كاش</span></td>
-                                        <td class="cell-name">45 ج</td>
-                                        <td><span class="pill amber">قيد الانتظار</span></td>
-                                        <td class="cell-muted">اليوم، 06:15 م</td>
-                                    </tr>
-                                    <tr>
-                                        <td>#1023</td>
-                                        <td class="cell-name">سارة علي</td>
-                                        <td><span class="pill purple">على الحساب</span></td>
-                                        <td class="cell-name">20 ج</td>
-                                        <td><span class="pill green">تم التسليم</span></td>
-                                        <td class="cell-muted">اليوم، 05:30 م</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ============================================================ -->
-            <!-- PANEL 2: إدارة المنتجات -->
-            <!-- ============================================================ -->
-            <section class="panel" id="panel-products">
-                <div class="page-header">
-                    <div>
-                        <div class="page-title">إدارة المنتجات</div>
-                        <div class="page-subtitle">إضافة وتعديل وحذف منتجات البوفيه</div>
-                    </div>
-                    <button class="btn btn-primary" onclick="openModal('addProductModal')">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                        إضافة منتج جديد
-                    </button>
-                </div>
-
-                <div class="card">
-                    <div class="card-body" style="padding:0;">
-                        <div class="table-wrap">
-                            <table>
-                                <thead><tr><th>صورة المنتج</th><th>الاسم</th><th>السعر</th><th>الحالة بالمخزن</th><th>التحكم</th></tr></thead>
-                                <tbody>
-                                    <tr>
-                                        <td>☕</td>
-                                        <td class="cell-name">قهوة تركي double</td>
-                                        <td class="cell-name">25 ج</td>
-                                        <td>
-                                            <label class="toggle-switch">
-                                                <input type="checkbox" checked>
-                                                <span class="toggle-slider"></span>
-                                            </label>
-                                        </td>
-                                        <td>
-                                            <div class="row-actions">
-                                                <button class="icon-btn edit"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-                                                <button class="icon-btn delete"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- ============================================================ -->
-            <!-- PANEL 3: إدارة المستخدمين -->
-            <!-- ============================================================ -->
-            <section class="panel" id="panel-users">
-                <div class="page-header">
-                    <div>
-                        <div class="page-title">إدارة المستخدمين</div>
-                        <div class="page-subtitle">صلاحيات الموظفين والحسابات الجارية</div>
-                    </div>
-                </div>
-                <div class="card"><div class="card-body">قائمة مستخدمي النظام تظهر هنا...</div></div>
-            </section>
-
-            <!-- ============================================================ -->
-            <!-- PANEL 4: إدارة الطلبات -->
-            <!-- ============================================================ -->
-            <section class="panel" id="panel-orders">
-                <div class="page-header">
-                    <div>
-                        <div class="page-title">إدارة الطلبات الحالية</div>
-                        <div class="page-subtitle">تحديث وحالة طلبات الموظفين الحية</div>
-                    </div>
-                </div>
-                <div class="card"><div class="card-body">شاشة التحكم بطلبات البوفيه الحية...</div></div>
-            </section>
-
-        </div>
+          <button type="submit"
+            className="w-full bg-sky-500 hover:bg-sky-400 text-white rounded-xl py-3 font-bold text-sm transition-colors shadow-lg shadow-sky-500/20 mt-2">
+            دخول
+          </button>
+        </form>
+      </div>
     </div>
-</div>
+  );
+}
 
-<!-- ============== MODAL: ADD PRODUCT ============== -->
-<div class="modal-overlay" id="addProductModal">
-    <div class="modal-box">
-        <div class="modal-header">
-            <div class="modal-title">إضافة منتج جديد</div>
-            <button class="modal-close" onclick="closeModal('addProductModal')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-        </div>
-        <div class="modal-body">
-            <form id="addProductForm" onsubmit="event.preventDefault(); alert('تم الحفظ بنجاح!'); closeModal('addProductModal');">
-                <div class="form-group">
-                    <label>اسم المنتج</label>
-                    <input type="text" placeholder="مثال: شاي فتلة كشري" required>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>السعر (جنيه)</label>
-                        <input type="number" placeholder="15" required>
-                    </div>
-                    <div class="form-group">
-                        <label>الأيقونة/الإيموجي</label>
-                        <input type="text" placeholder="🍵">
-                    </div>
-                </div>
-                <div class="modal-footer" style="padding-inline:0; padding-bottom:0;">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal('addProductModal')">إلغاء</button>
-                    <button type="submit" class="btn btn-primary">حفظ المنتج</button>
-                </div>
-            </form>
-        </div>
+// ─── Interfaces ───────────────────────────────────────────────────────────────
+interface TopUp { id: string; date: string; gb: number; note: string; }
+interface UsageLog { id: string; date: string; gb: number; note: string; }
+interface Customer {
+  id: string;
+  name: string;
+  phone: string;
+  topUps: TopUp[];
+  usageLogs: UsageLog[];
+  createdAt: string;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const uid = () => Math.random().toString(36).slice(2, 9);
+const today = () => new Date().toISOString().slice(0, 10);
+const fmt = (d: string) => new Date(d).toLocaleDateString("ar-EG", { day: "2-digit", month: "short" });
+
+function customerStats(c: Customer) {
+  const allocated = c.topUps?.reduce((s, t) => s + Number(t.gb), 0) || 0;
+  const consumed = c.usageLogs?.reduce((s, u) => s + Number(u.gb), 0) || 0;
+  const remaining = allocated - consumed;
+  const pct = allocated > 0 ? Math.min((consumed / allocated) * 100, 100) : 0;
+  return { allocated, consumed, remaining, pct };
+}
+
+// Sub-components (StatCard, UsageBar, Badge, Modal unchanged for space)
+function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; label: string; value: string; sub?: string; color: string }) {
+  return (
+    <div className="bg-card rounded-2xl p-4 shadow-sm border border-border flex items-center gap-3">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${color}`}>{icon}</div>
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-xl font-bold text-foreground leading-tight">{value}</p>
+        {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+      </div>
     </div>
-</div>
+  );
+}
 
-<script>
-    // إزالة قفل الحماية بمجرد تحميل الصفحة بنجاح (لأغراض العرض المحلى والتطوير)
-    document.documentElement.classList.remove('auth-pending');
+function UsageBar({ pct, size = "md" }: { pct: number; size?: "sm" | "md" }) {
+  const h = size === "sm" ? "h-1.5" : "h-2.5";
+  const color = pct >= 90 ? "bg-red-500" : pct >= 70 ? "bg-amber-400" : "bg-emerald-500";
+  return (
+    <div className={`w-full bg-muted rounded-full overflow-hidden ${h}`}>
+      <div className={`${h} ${color} rounded-full transition-all duration-500`} style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
 
-    // 1. إدارة التبديل والتنقل بين لوحات التحكم (Tabs Side Navigation)
-    const navItems = document.querySelectorAll('.nav-item');
-    const panels = document.querySelectorAll('.panel');
-    const mobileTitle = document.getElementById('mobileTitle');
+function Badge({ children, variant }: { children: React.ReactNode; variant: "green" | "amber" | "red" | "blue" }) {
+  const cls = { green: "bg-emerald-100 text-emerald-700", amber: "bg-amber-100 text-amber-700", red: "bg-red-100 text-red-700", blue: "bg-sky-100 text-sky-700" }[variant];
+  return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${cls}`}>{children}</span>;
+}
 
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            // إزالة الحالة النشطة من كل الأزرار
-            navItems.forEach(nav => nav.classList.remove('active'));
-            // إخفاء كافة اللوحات
-            panels.forEach(panel => panel.classList.remove('active'));
+function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-card w-full max-w-md rounded-t-3xl sm:rounded-2xl shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-bold text-foreground">{title}</h2>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-border">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
-            // تفعيل الزر الحالي واللوحة المقابلة له
-            item.classList.add('active');
-            const panelId = `panel-${item.getAttribute('data-panel')}`;
-            const activePanel = document.getElementById(panelId);
-            if(activePanel) activePanel.classList.add('active');
+type Tab = "dashboard" | "customers" | "report";
 
-            // تحديث العنوان على الموبايل
-            mobileTitle.textContent = item.textContent.trim().split('\n')[0];
+export default function App() {
+  const [loggedIn, setLoggedIn] = useState(() => localStorage.getItem("net-auth") === "1");
+  const [tab, setTab] = useState<Tab>("dashboard");
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Customer | null>(null);
+  const [modal, setModal] = useState<null | "addCustomer" | "topUp" | "logUsage" | "detail">(null);
+  const [form, setForm] = useState({ name: "", phone: "", gb: "", note: "" });
 
-            // إغلاق القائمة الجانبية في شاشات الموبايل بعد الاختيار
-            document.getElementById('sidebar').classList.remove('open');
-            document.getElementById('sidebarOverlay').classList.remove('show');
-        });
+  if (!loggedIn) return <LoginScreen onLogin={() => setLoggedIn(true)} />;
+
+  function logout() {
+    localStorage.removeItem("net-auth");
+    setLoggedIn(false);
+  }
+
+  // ── جلب البيانات بالكامل من قاعدة البيانات ────────────────────────────────────
+  async function fetchCustomers() {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("customers")
+      .select(`
+        id, name, phone, created_at,
+        topUps:top_ups(id, date, gb, note),
+        usageLogs:usage_logs(id, date, gb, note)
+      `);
+    
+    if (!error && data) {
+      // تحويل أسماء الحقول لتتوافق مع الـ Interface في الكود
+      const formatted: Customer[] = data.map((c: any) => ({
+        id: c.id,
+        name: c.name,
+        phone: c.phone || "",
+        createdAt: c.created_at,
+        topUps: c.topUps || [],
+        usageLogs: c.usageLogs || []
+      }));
+      setCustomers(formatted);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const filtered = useMemo(() =>
+    customers.filter(c => c.name.includes(search) || c.phone.includes(search)),
+    [customers, search]
+  );
+
+  const totals = useMemo(() => {
+    const allocated = customers.reduce((s, c) => s + customerStats(c).allocated, 0);
+    const consumed = customers.reduce((s, c) => s + customerStats(c).consumed, 0);
+    const lowCount = customers.filter(c => customerStats(c).pct >= 80).length;
+    return { allocated, consumed, remaining: allocated - consumed, lowCount };
+  }, [customers]);
+
+  const chartData = useMemo(() =>
+    [...customers]
+      .map(c => ({ name: c.name.split(" ")[0], ...customerStats(c) }))
+      .sort((a, b) => b.consumed - a.consumed)
+      .slice(0, 6),
+    [customers]
+  );
+
+  // ── العمليات على قاعدة البيانات (Insert / Delete) ─────────────────────────────
+  async function addCustomer() {
+    if (!form.name.trim()) return;
+    const newId = uid();
+    const { error } = await supabase.from("customers").insert({
+      id: newId,
+      name: form.name.trim(),
+      phone: form.phone.trim()
     });
 
-    // 2. تشغيل الـ Sidebar المتجاوب على الموبايل
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-    if(sidebarToggle) {
-        sidebarToggle.addEventListener('click', () => {
-            sidebar.classList.add('open');
-            sidebarOverlay.classList.add('show');
-        });
+    if (!error) {
+      fetchCustomers();
+      setForm({ name: "", phone: "", gb: "", note: "" });
+      setModal(null);
     }
+  }
 
-    if(sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', () => {
-            sidebar.classList.remove('open');
-            sidebarOverlay.classList.remove('show');
-        });
-    }
+  async function addTopUp() {
+    if (!selected || !form.gb) return;
+    const gb = parseFloat(form.gb);
+    if (isNaN(gb) || gb <= 0) return;
 
-    // 3. دوال فتح وإغلاق النوافذ المنبثقة (Modals)
-    function openModal(id) {
-        const modal = document.getElementById(id);
-        if(modal) modal.classList.add('show');
-    }
-
-    function closeModal(id) {
-        const modal = document.getElementById(id);
-        if(modal) modal.classList.remove('show');
-    }
-
-    // 4. تسجيل الخروج
-    document.getElementById('logoutBtn').addEventListener('click', () => {
-        sessionStorage.clear();
-        window.location.replace('/index.html');
+    const { error } = await supabase.from("top_ups").insert({
+      id: uid(),
+      customer_id: selected.id,
+      gb: gb,
+      note: form.note
     });
-</script>
 
-</body>
-</html>
+    if (!error) {
+      fetchCustomers();
+      setForm({ name: "", phone: "", gb: "", note: "" });
+      setModal(null);
+      setSelected(null);
+    }
+  }
+
+  async function logUsage() {
+    if (!selected || !form.gb) return;
+    const gb = parseFloat(form.gb);
+    if (isNaN(gb) || gb <= 0) return;
+
+    const { error } = await supabase.from("usage_logs").insert({
+      id: uid(),
+      customer_id: selected.id,
+      gb: gb,
+      note: form.note
+    });
+
+    if (!error) {
+      fetchCustomers();
+      setForm({ name: "", phone: "", gb: "", note: "" });
+      setModal(null);
+      setSelected(null);
+    }
+  }
+
+  async function deleteCustomer(id: string) {
+    if (!confirm("هل أنت متأكد من حذف هذا المشترك نهائياً؟")) return;
+    const { error } = await supabase.from("customers").delete().eq("id", id);
+    if (!error) {
+      fetchCustomers();
+      setModal(null);
+      setSelected(null);
+    }
+  }
+
+  function openDetail(c: Customer) { setSelected(c); setModal("detail"); }
+  function openTopUp(c: Customer) { setSelected(c); setForm({ name: "", phone: "", gb: "", note: "" }); setModal("topUp"); }
+  function openLogUsage(c: Customer) { setSelected(c); setForm({ name: "", phone: "", gb: "", note: "" }); setModal("logUsage"); }
+
+  const selectedLive = selected ? customers.find(c => c.id === selected.id) ?? selected : null;
+
+  return (
+    <div dir="rtl" className="min-h-screen bg-background font-[Cairo,sans-serif]">
+      {/* Header */}
+      <header className="bg-[#0f172a] text-white px-4 pt-10 pb-6">
+        <div className="max-w-2xl mx-auto flex items-start justify-between">
+          <div>
+            <p className="text-sky-400 text-sm font-semibold mb-1">لوحة تحكم</p>
+            <h1 className="text-2xl font-extrabold">إدارة استهلاك النت</h1>
+            <p className="text-slate-400 text-sm mt-1">{customers.length} مشترك مسجل</p>
+          </div>
+          <button onClick={logout} className="flex items-center gap-1.5 text-slate-400 hover:text-red-400 text-xs bg-slate-800 rounded-xl px-3 py-2 border border-slate-700">
+            <LogOut className="w-3.5 h-3.5" /> خروج
+          </button>
+        </div>
+      </header>
+
+      {/* Tabs */}
+      <div className="bg-[#0f172a] px-4 pb-0">
+        <div className="max-w-2xl mx-auto flex gap-0 border-b border-slate-700">
+          {([["dashboard", "الرئيسية"], ["customers", "المشتركين"], ["report", "تقرير الشهر"]] as [Tab, string][]).map(([id, label]) => (
+            <button key={id} onClick={() => setTab(id)} className={`px-4 py-3 text-sm font-semibold border-b-2 -mb-px ${tab === id ? "border-sky-400 text-sky-400" : "border-transparent text-slate-400 hover:text-white"}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-20 text-muted-foreground text-sm">جاري تحميل البيانات من قاعدة البيانات...</div>
+      ) : (
+        <main className="max-w-2xl mx-auto px-4 py-5 space-y-5">
+          {/* DASHBOARD TAB */}
+          {tab === "dashboard" && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <StatCard icon={<Users className="w-5 h-5 text-sky-600" />} label="إجمالي المشتركين" value={`${customers.length}`} color="bg-sky-100" />
+                <StatCard icon={<Wifi className="w-5 h-5 text-emerald-600" />} label="جيجات متاحة" value={`${totals.allocated} GB`} color="bg-emerald-100" />
+                <StatCard icon={<TrendingUp className="w-5 h-5 text-violet-600" />} label="إجمالي الاستهلاك" value={`${totals.consumed} GB`} color="bg-violet-100" />
+                <StatCard icon={<AlertCircle className="w-5 h-5 text-red-500" />} label="على وشك الانتهاء" value={`${totals.lowCount}`} sub="أكثر من 80%" color="bg-red-100" />
+              </div>
+
+              <div className="bg-card rounded-2xl p-4 shadow-sm border border-border">
+                <h3 className="text-sm font-bold text-foreground mb-4">استهلاك كل مشترك (GB)</h3>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart data={chartData} barSize={28}>
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fontFamily: "Cairo", fill: "#64748b" }} axisLine={false} tickLine={false} />
+                    <YAxis hide />
+                    <Tooltip contentStyle={{ fontFamily: "Cairo", fontSize: 12, borderRadius: 10, border: "none" }} formatter={(v: number) => [`${v} GB`]} />
+                    <Bar dataKey="consumed" radius={[6, 6, 0, 0]}>
+                      {chartData.map((entry) => (
+                        <Cell key={`cell-${entry.name}`} fill={entry.pct >= 90 ? "#ef4444" : entry.pct >= 70 ? "#f59e0b" : "#10b981"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {customers.filter(c => customerStats(c).pct >= 80).length > 0 && (
+                <div className="bg-red-50 border border-red-200 rounded-2xl p-4">
+                  <p className="text-sm font-bold text-red-700 mb-3 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" /> تحذير — جيجات على وشك الانتهاء
+                  </p>
+                  <div className="space-y-2">
+                    {customers.filter(c => customerStats(c).pct >= 80).map(c => {
+                      const s = customerStats(c);
+                      return (
+                        <div key={c.id} className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-red-800">{c.name}</span>
+                          <span className="text-xs text-red-600">{s.remaining.toFixed(1)} GB متبقي</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* CUSTOMERS TAB */}
+          {tab === "customers" && (
+            <>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="ابحث بالاسم أو الرقم..." className="w-full bg-card border border-border rounded-xl py-2.5 pr-9 pl-3 text-sm" />
+                </div>
+                <button onClick={() => setModal("addCustomer")} className="flex items-center gap-1.5 bg-primary text-primary-foreground rounded-xl px-4 py-2.5 text-sm font-bold hover:bg-sky-600 shrink-0">
+                  <Plus className="w-4 h-4" /> إضافة
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {filtered.map(c => {
+                  const s = customerStats(c);
+                  return (
+                    <div key={c.id} className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+                      <div className="p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <p className="font-bold text-foreground">{c.name}</p>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                              <PhoneCall className="w-3 h-3" /> {c.phone || "لا يوجد رقم"}
+                            </p>
+                          </div>
+                          <Badge variant={s.pct >= 90 ? "red" : s.pct >= 70 ? "amber" : s.remaining === 0 && s.allocated === 0 ? "blue" : "green"}>
+                            {s.pct >= 90 ? "حرج" : s.pct >= 70 ? "تحذير" : s.allocated === 0 ? "بدون باقة" : "جيد"}
+                          </Badge>
+                        </div>
+
+                        <div className="mb-2"><UsageBar pct={s.pct} /></div>
+                        <div className="flex justify-between text-xs text-muted-foreground mb-3">
+                          <span>استهلك: <strong className="text-foreground">{s.consumed} GB</strong></span>
+                          <span>متبقي: <strong className={s.remaining < 2 && s.allocated > 0 ? "text-red-500" : "text-emerald-600"}>{s.remaining.toFixed(1)} GB</strong></span>
+                          <span>المجموع: <strong className="text-foreground">{s.allocated} GB</strong></span>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button onClick={() => openTopUp(c)} className="flex-1 flex items-center justify-center gap-1.5 bg-sky-50 text-sky-700 border border-sky-200 rounded-xl py-2 text-xs font-bold">
+                            <Plus className="w-3.5 h-3.5" /> تجديد جيجات
+                          </button>
+                          <button onClick={() => openLogUsage(c)} className="flex-1 flex items-center justify-center gap-1.5 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl py-2 text-xs font-bold">
+                            <RefreshCw className="w-3.5 h-3.5" /> تسجيل استهلاك
+                          </button>
+                          <button onClick={() => openDetail(c)} className="w-9 flex items-center justify-center bg-muted rounded-xl text-muted-foreground">
+                            <ChevronDown className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* REPORT TAB */}
+          {tab === "report" && (
+            <>
+              <div className="bg-[#0f172a] text-white rounded-2xl p-5">
+                <p className="text-sky-400 text-xs font-semibold mb-1">ملخص</p>
+                <h2 className="text-xl font-extrabold">تقرير الشهر الحالي</h2>
+                <div className="mt-3 grid grid-cols-3 gap-3 text-center">
+                  <div><p className="text-2xl font-black text-sky-400">{totals.allocated}</p><p className="text-xs text-slate-400">إجمالي GB</p></div>
+                  <div><p className="text-2xl font-black text-emerald-400">{totals.consumed}</p><p className="text-xs text-slate-400">مستهلك</p></div>
+                  <div><p className="text-2xl font-black text-violet-400">{totals.remaining}</p><p className="text-xs text-slate-400">متبقي</p></div>
+                </div>
+              </div>
+
+              <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-border"><h3 className="font-bold text-foreground text-sm">تفاصيل كل مشترك</h3></div>
+                <div className="divide-y divide-border">
+                  {[...customers].sort((a, b) => customerStats(b).consumed - customerStats(a).consumed).map(c => {
+                    const s = customerStats(c);
+                    return (
+                      <div key={c.id} className="p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-semibold text-sm text-foreground">{c.name}</p>
+                          <Badge variant={s.pct >= 90 ? "red" : s.pct >= 70 ? "amber" : "green"}>{s.pct.toFixed(0)}%</Badge>
+                        </div>
+                        <UsageBar pct={s.pct} size="sm" />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
+                          <span>استهلك {s.consumed} GB</span>
+                          <span>من أصل {s.allocated} GB</span>
+                          <span className={s.remaining < 2 && s.allocated > 0 ? "text-red-500 font-bold" : ""}>متبقي {s.remaining.toFixed(1)} GB</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </main>
+      )}
+
+      {/* MODALS */}
+      {modal === "addCustomer" && (
+        <Modal title="إضافة مشترك جديد" onClose={() => setModal(null)}>
+          <div className="space-y-3">
+            <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="الاسم الكامل *" className="input-field" />
+            <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="رقم الجوال" className="input-field" type="tel" />
+            <button onClick={addCustomer} disabled={!form.name.trim()} className="w-full bg-primary text-primary-foreground rounded-xl py-3 font-bold text-sm disabled:opacity-40">إضافة المشترك</button>
+          </div>
+        </Modal>
+      )}
+
+      {modal === "topUp" && selected && (
+        <Modal title={`تجديد جيجات — ${selected.name}`} onClose={() => setModal(null)}>
+          <div className="space-y-3">
+            <input value={form.gb} onChange={e => setForm(f => ({ ...f, gb: e.target.value }))} placeholder="عدد الجيجات *" className="input-field" type="number" min="0.1" step="0.5" />
+            <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="ملاحظة (اختياري)" className="input-field" />
+            <button onClick={addTopUp} disabled={!form.gb} className="w-full bg-sky-500 text-white rounded-xl py-3 font-bold text-sm disabled:opacity-40">إضافة الجيجات</button>
+          </div>
+        </Modal>
+      )}
+
+      {modal === "logUsage" && selected && (
+        <Modal title={`تسجيل استهلاك — ${selected.name}`} onClose={() => setModal(null)}>
+          <div className="space-y-3">
+            <input value={form.gb} onChange={e => setForm(f => ({ ...f, gb: e.target.value }))} placeholder="الجيجات المستهلكة *" className="input-field" type="number" min="0.1" step="0.5" />
+            <input value={form.note} onChange={e => setForm(f => ({ ...f, note: e.target.value }))} placeholder="ملاحظة (اختياري)" className="input-field" />
+            <button onClick={logUsage} disabled={!form.gb} className="w-full bg-violet-600 text-white rounded-xl py-3 font-bold text-sm disabled:opacity-40">تسجيل الاستهلاك</button>
+          </div>
+        </Modal>
+      )}
+
+      {modal === "detail" && selectedLive && (() => {
+        const s = customerStats(selectedLive);
+        return (
+          <Modal title={selectedLive.name} onClose={() => setModal(null)}>
+            <div className="space-y-4">
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5"><PhoneCall className="w-3.5 h-3.5" /> {selectedLive.phone || "لا يوجد رقم"}</p>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {[["المخصص", `${s.allocated} GB`, "text-sky-600"], ["المستهلك", `${s.consumed} GB`, "text-violet-600"], ["المتبقي", `${s.remaining.toFixed(1)} GB`, s.remaining < 2 && s.allocated > 0 ? "text-red-500" : "text-emerald-600"]].map(([l, v, cls]) => (
+                  <div key={l} className="bg-muted rounded-xl p-3">
+                    <p className={`font-bold text-base ${cls}`}>{v}</p>
+                    <p className="text-xs text-muted-foreground">{l}</p>
+                  </div>
+                ))}
+              </div>
+              <UsageBar pct={s.pct} />
+
+              {selectedLive.topUps?.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground mb-2">سجل التجديدات</p>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    {selectedLive.topUps.map(t => (
+                      <div key={t.id} className="flex justify-between text-xs bg-sky-50 rounded-lg px-3 py-1.5">
+                        <span className="text-sky-700 font-semibold">+{t.gb} GB</span>
+                        <span className="text-muted-foreground">{t.note || "—"}</span>
+                        <span className="text-muted-foreground font-mono">{fmt(t.date)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedLive.usageLogs?.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold text-muted-foreground mb-2">سجل الاستهلاك</p>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto">
+                    {selectedLive.usageLogs.map(u => (
+                      <div key={u.id} className="flex justify-between text-xs bg-violet-50 rounded-lg px-3 py-1.5">
+                        <span className="text-violet-700 font-semibold">-{u.gb} GB</span>
+                        <span className="text-muted-foreground">{u.note || "—"}</span>
+                        <span className="text-muted-foreground font-mono">{fmt(u.date)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-1">
+                <button onClick={() => { setModal(null); openTopUp(selectedLive); }} className="flex-1 bg-sky-50 text-sky-700 border border-sky-200 rounded-xl py-2.5 text-sm font-bold">+ تجديد</button>
+                <button onClick={() => { setModal(null); openLogUsage(selectedLive); }} className="flex-1 bg-violet-50 text-violet-700 border border-violet-200 rounded-xl py-2.5 text-sm font-bold">استهلاك</button>
+                <button onClick={() => deleteCustomer(selectedLive.id)} className="w-11 flex items-center justify-center bg-red-50 text-red-500 border border-red-200 rounded-xl"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
+
+      <style>{`
+        .input-field { width: 100%; background: #f8fafc; border: 1px solid rgba(15,23,42,0.1); border-radius: 0.75rem; padding: 0.75rem 1rem; font-size: 0.875rem; font-family: Cairo, sans-serif; color: #0f172a; direction: rtl; outline: none; transition: border-color 0.15s; }
+        .input-field:focus { border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14,165,233,0.15); }
+        .input-field::placeholder { color: #94a3b8; }
+      `}</style>
+    </div>
+  );
+}
