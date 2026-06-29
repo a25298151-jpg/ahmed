@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام إدارة الإنترنت</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Supabase JS v2 -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: rgba(15,23,42,0.1);
+    --primary: #0ea5e9;
+    --accent: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --violet: #8b5cf6;
+    --navy: #0f172a;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: 'Cairo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(15,23,42,0.2); border-radius: 2px; }
+
+  /* ===== CONFIG BANNER ===== */
+  #configBanner {
+    position: fixed; inset: 0; z-index: 2000;
+    background: #0f172a;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  .config-card {
+    background: #1e293b;
+    border-radius: 20px;
+    padding: 2rem 1.75rem;
+    width: 100%; max-width: 420px;
+    border: 1px solid rgba(255,255,255,0.07);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+  }
+  .config-card h2 { color: #fff; font-size: 1.2rem; margin-bottom: 0.4rem; }
+  .config-card p  { color: #64748b; font-size: 0.82rem; margin-bottom: 1.5rem; line-height: 1.6; }
+  .config-card label { display:block; color: #94a3b8; font-size: 0.78rem; font-weight: 600; margin-bottom: 0.35rem; }
+  .config-card input {
+    width: 100%; padding: 0.7rem 1rem;
+    background: #334155; border: 1.5px solid transparent;
+    border-radius: 10px; color: #fff;
+    font-family: 'Cairo', sans-serif; font-size: 0.85rem;
+    outline: none; margin-bottom: 1rem;
+    direction: ltr;
+    transition: border-color 0.2s;
+  }
+  .config-card input:focus { border-color: var(--primary); }
+  .config-save {
+    width: 100%; padding: 0.8rem;
+    background: var(--primary); color: #fff;
+    border: none; border-radius: 10px;
+    font-family: 'Cairo', sans-serif; font-size: 0.95rem; font-weight: 700;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .config-save:hover { background: #0284c7; }
+  .config-note {
+    margin-top: 1rem; font-size: 0.75rem; color: #475569;
+    background: rgba(255,255,255,0.04); border-radius: 8px;
+    padding: 0.6rem 0.8rem; line-height: 1.7;
+  }
+
+  /* ===== LOGIN ===== */
+  #loginScreen {
+    position: fixed; inset: 0;
+    background: #0f172a;
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; padding: 1rem;
+  }
+  .login-card {
+    background: #1e293b; border-radius: 20px;
+    padding: 2.5rem 2rem; width: 100%; max-width: 380px;
+    text-align: center; border: 1px solid rgba(255,255,255,0.07);
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+  }
+  .login-card.shake { animation: shake 0.5s ease; }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)}
+    40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)}
+  }
+  .login-icon { width:64px;height:64px; background:rgba(14,165,233,0.15); border-radius:18px; display:flex;align-items:center;justify-content:center; margin:0 auto 1.5rem; font-size:1.8rem; }
+  .login-title { color:#fff; font-size:1.4rem; font-weight:700; margin-bottom:0.3rem; }
+  .login-sub   { color:#64748b; font-size:0.85rem; margin-bottom:2rem; }
+  .login-field { margin-bottom:1rem; position:relative; }
+  .login-field input {
+    width:100%; padding:0.8rem 1rem;
+    background:#334155; border:1.5px solid transparent; border-radius:10px;
+    color:#fff; font-family:'Cairo',sans-serif; font-size:0.95rem; outline:none;
+    transition:border-color 0.2s;
+  }
+  .login-field input:focus { border-color:var(--primary); }
+  .login-field input::placeholder { color:#64748b; }
+  .toggle-pw { position:absolute; left:0.8rem;top:50%; transform:translateY(-50%); background:none;border:none; color:#64748b;cursor:pointer; font-size:1rem;padding:0.2rem; }
+  .login-btn {
+    width:100%; padding:0.85rem; background:var(--primary); color:#fff;
+    border:none; border-radius:10px; font-family:'Cairo',sans-serif;
+    font-size:1rem; font-weight:700; cursor:pointer; transition:background 0.2s,transform 0.1s; margin-top:0.5rem;
+  }
+  .login-btn:hover { background:#0284c7; }
+  .login-btn:active { transform:scale(0.98); }
+  .login-error {
+    background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3);
+    color:#fca5a5; border-radius:8px; padding:0.6rem 1rem;
+    font-size:0.85rem; margin-top:0.8rem; display:none;
+  }
+  .login-config-link {
+    margin-top: 1rem; font-size: 0.75rem; color: #475569; cursor: pointer;
+  }
+  .login-config-link:hover { color: #94a3b8; }
+
+  /* ===== LOADING OVERLAY ===== */
+  #loadingOverlay {
+    position: fixed; inset: 0; z-index: 900;
+    background: rgba(240,244,248,0.85);
+    display: none; align-items: center; justify-content: center;
+    flex-direction: column; gap: 0.75rem;
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .loading-text { color: var(--muted); font-size: 0.85rem; }
+
+  /* ===== APP ===== */
+  #app { display: none; min-height: 100vh; }
+
+  .header {
+    position:sticky;top:0;z-index:100;
+    background:var(--navy); padding:0.75rem 1.25rem;
+    display:flex;align-items:center;justify-content:space-between;
+    box-shadow:0 2px 20px rgba(0,0,0,0.3);
+  }
+  .header-brand { display:flex;align-items:center;gap:0.6rem; }
+  .header-icon { font-size:1.3rem; background:rgba(14,165,233,0.2); padding:0.35rem; border-radius:8px; }
+  .header-title { color:#fff; font-size:1rem; font-weight:700; }
+  .header-sub   { color:#94a3b8; font-size:0.75rem; font-weight:400; }
+  .header-meta  { display:flex;align-items:center;gap:0.75rem; }
+  .header-count { background:rgba(14,165,233,0.15); color:var(--primary); padding:0.3rem 0.75rem; border-radius:20px; font-size:0.8rem; font-weight:600; }
+  .logout-btn { background:rgba(239,68,68,0.15); color:#fca5a5; border:none; padding:0.35rem 0.75rem; border-radius:8px; font-family:'Cairo',sans-serif; font-size:0.8rem; cursor:pointer; transition:background 0.2s; }
+  .logout-btn:hover { background:rgba(239,68,68,0.25); }
+
+  .tabs { position:sticky;top:57px;z-index:99; background:var(--card); display:flex; border-bottom:2px solid var(--border); box-shadow:0 2px 10px rgba(0,0,0,0.06); }
+  .tab-btn { flex:1; padding:0.85rem 0.5rem; background:none; border:none; font-family:'Cairo',sans-serif; font-size:0.85rem; font-weight:600; color:var(--muted); cursor:pointer; position:relative; transition:color 0.2s; display:flex;align-items:center;justify-content:center;gap:0.4rem; }
+  .tab-btn::after { content:''; position:absolute;bottom:-2px;left:0;right:0; height:2px; background:var(--primary); transform:scaleX(0); transition:transform 0.25s; }
+  .tab-btn.active { color:var(--primary); }
+  .tab-btn.active::after { transform:scaleX(1); }
+  .tab-btn:hover { color:var(--text); }
+
+  .content { padding:1.25rem; max-width:900px; margin:0 auto; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+
+  .stats-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.75rem; margin-bottom:1.25rem; }
+  .stat-card { background:var(--card); border-radius:14px; padding:1rem; display:flex;align-items:center;gap:0.75rem; box-shadow:0 1px 8px var(--border); border:1px solid var(--border); }
+  .stat-icon { width:42px;height:42px; border-radius:12px; display:flex;align-items:center;justify-content:center; font-size:1.2rem; flex-shrink:0; }
+  .stat-info { min-width:0; }
+  .stat-val   { font-size:1.35rem; font-weight:800; line-height:1; margin-bottom:0.15rem; }
+  .stat-label { font-size:0.72rem; color:var(--muted); font-weight:500; }
+
+  .chart-card { background:var(--card); border-radius:14px; padding:1.25rem; margin-bottom:1.25rem; box-shadow:0 1px 8px var(--border); border:1px solid var(--border); }
+  .card-title { font-size:0.9rem; font-weight:700; margin-bottom:1rem; color:var(--text); display:flex;align-items:center;gap:0.4rem; }
+  .bar-chart-wrap { display:flex;align-items:flex-end;justify-content:space-around; gap:0.5rem; height:140px; padding-top:1rem; }
+  .bar-item { display:flex;flex-direction:column;align-items:center; gap:0.4rem;flex:1;min-width:0; }
+  .bar-val  { font-size:0.65rem; font-weight:700; color:var(--muted); }
+  .bar-col-wrap { flex:1;width:100%;display:flex;align-items:flex-end;justify-content:center; }
+  .bar-col  { width:70%; border-radius:6px 6px 0 0; min-height:4px; transition:height 0.4s ease; }
+  .bar-name { font-size:0.65rem; color:var(--muted); text-align:center; word-break:break-all; max-width:100%; }
+
+  .warn-card  { background:#fef2f2; border:1px solid #fecaca; border-radius:14px; padding:1rem; margin-bottom:1.25rem; }
+  .warn-title { font-size:0.85rem; font-weight:700; color:#dc2626; margin-bottom:0.6rem; display:flex;align-items:center;gap:0.4rem; }
+  .warn-item  { display:flex;justify-content:space-between;align-items:center; padding:0.4rem 0; border-bottom:1px solid #fecaca; font-size:0.82rem; }
+  .warn-item:last-child { border-bottom:none; }
+  .warn-name { font-weight:600; color:#7f1d1d; }
+  .warn-rem  { color:#dc2626; font-weight:700; }
+
+  .search-row   { display:flex;gap:0.6rem;margin-bottom:1rem; }
+  .search-input { flex:1; padding:0.7rem 1rem; border:1.5px solid var(--border); border-radius:10px; background:var(--card); font-family:'Cairo',sans-serif; font-size:0.9rem; color:var(--text); outline:none; transition:border-color 0.2s; }
+  .search-input:focus { border-color:var(--primary); }
+  .add-btn { padding:0.7rem 1.1rem; background:var(--primary); color:#fff; border:none; border-radius:10px; font-family:'Cairo',sans-serif; font-size:0.9rem; font-weight:700; cursor:pointer; white-space:nowrap; transition:background 0.2s; }
+  .add-btn:hover { background:#0284c7; }
+
+  .customers-list { display:flex;flex-direction:column;gap:0.75rem; }
+  .cust-card    { background:var(--card); border-radius:14px; padding:1rem; box-shadow:0 1px 8px var(--border); border:1px solid var(--border); }
+  .cust-header  { display:flex;align-items:flex-start;justify-content:space-between; margin-bottom:0.75rem; }
+  .cust-info    { min-width:0; }
+  .cust-name    { font-size:0.95rem; font-weight:700; margin-bottom:0.1rem; }
+  .cust-phone   { font-size:0.78rem; color:var(--muted); direction:ltr;text-align:right; }
+  .badge        { padding:0.2rem 0.6rem; border-radius:20px; font-size:0.72rem; font-weight:700; flex-shrink:0; }
+  .badge-good { background:#d1fae5; color:#065f46; }
+  .badge-warn { background:#fef3c7; color:#92400e; }
+  .badge-crit { background:#fee2e2; color:#991b1b; }
+  .badge-none { background:#f1f5f9; color:#475569; }
+  .progress-wrap { background:#f1f5f9; border-radius:100px; height:7px; overflow:hidden; margin-bottom:0.75rem; }
+  .progress-bar  { height:100%; border-radius:100px; transition:width 0.4s ease; }
+  .prog-green { background:var(--accent); }
+  .prog-amber { background:var(--amber); }
+  .prog-red   { background:var(--red); }
+  .cust-stats  { display:flex;gap:0.5rem;margin-bottom:0.85rem; }
+  .cust-stat   { flex:1; background:var(--bg); border-radius:8px; padding:0.4rem 0.5rem; text-align:center; }
+  .cst-val { font-size:0.8rem; font-weight:700; color:var(--text); }
+  .cst-lbl { font-size:0.65rem; color:var(--muted); font-weight:500; }
+  .cust-actions { display:flex;gap:0.5rem;align-items:center; }
+  .btn-topup { flex:1; padding:0.55rem; background:#e0f2fe; color:#0369a1; border:none; border-radius:8px; font-family:'Cairo',sans-serif; font-size:0.78rem; font-weight:700; cursor:pointer; transition:background 0.2s; }
+  .btn-topup:hover { background:#bae6fd; }
+  .btn-usage { flex:1; padding:0.55rem; background:#ede9fe; color:#6d28d9; border:none; border-radius:8px; font-family:'Cairo',sans-serif; font-size:0.78rem; font-weight:700; cursor:pointer; transition:background 0.2s; }
+  .btn-usage:hover { background:#ddd6fe; }
+  .btn-detail { padding:0.55rem 0.75rem; background:var(--bg); color:var(--muted); border:1px solid var(--border); border-radius:8px; font-family:'Cairo',sans-serif; font-size:0.85rem; cursor:pointer; transition:background 0.2s; }
+  .btn-detail:hover { background:#e2e8f0; }
+
+  .report-summary { background:var(--navy); border-radius:14px; padding:1.25rem; margin-bottom:1.25rem; display:flex;gap:0.5rem; }
+  .rep-stat { flex:1; text-align:center; }
+  .rep-val  { color:#fff; font-size:1.2rem; font-weight:800; }
+  .rep-lbl  { color:#94a3b8; font-size:0.7rem; font-weight:500; margin-top:0.15rem; }
+  .rep-divider { width:1px; background:rgba(255,255,255,0.1); }
+  .report-table { display:flex;flex-direction:column;gap:0.6rem; }
+  .rep-row     { background:var(--card); border-radius:12px; padding:0.9rem 1rem; box-shadow:0 1px 6px var(--border); border:1px solid var(--border); }
+  .rep-row-top { display:flex;align-items:center;justify-content:space-between; margin-bottom:0.5rem; }
+  .rep-name { font-size:0.88rem; font-weight:700; }
+  .rep-nums { font-size:0.75rem; color:var(--muted); margin-top:0.2rem; }
+
+  /* MODALS */
+  .overlay { position:fixed;inset:0; background:rgba(0,0,0,0.55); z-index:500; display:none; align-items:flex-end; justify-content:center; }
+  .overlay.open { display:flex; animation:fadeIn 0.2s ease; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .modal { background:var(--card); border-radius:20px 20px 0 0; padding:1.5rem 1.25rem; width:100%; max-width:560px; max-height:90vh; overflow-y:auto; animation:slideUp 0.3s ease; }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .modal-header { display:flex;align-items:center;justify-content:space-between; margin-bottom:1.25rem; }
+  .modal-title { font-size:1rem; font-weight:700; }
+  .modal-sub   { font-size:0.78rem; color:var(--muted); margin-top:0.1rem; }
+  .close-btn   { width:32px;height:32px; background:var(--bg); border:none; border-radius:8px; font-size:1rem; cursor:pointer; display:flex;align-items:center;justify-content:center; color:var(--muted); transition:background 0.2s; }
+  .close-btn:hover { background:#e2e8f0; }
+  .form-group  { margin-bottom:1rem; }
+  .form-label  { display:block; font-size:0.82rem; font-weight:600; color:var(--text); margin-bottom:0.4rem; }
+  .form-input  { width:100%; padding:0.75rem 1rem; border:1.5px solid var(--border); border-radius:10px; background:#f8fafc; font-family:'Cairo',sans-serif; font-size:0.9rem; color:var(--text); outline:none; transition:border-color 0.2s; }
+  .form-input:focus { border-color:var(--primary); background:#fff; }
+  .modal-btn   { width:100%; padding:0.85rem; border:none; border-radius:10px; font-family:'Cairo',sans-serif; font-size:0.95rem; font-weight:700; cursor:pointer; transition:opacity 0.2s,transform 0.1s; margin-top:0.25rem; }
+  .modal-btn:hover  { opacity:0.9; }
+  .modal-btn:active { transform:scale(0.98); }
+  .btn-blue   { background:var(--primary); color:#fff; }
+  .btn-violet { background:var(--violet); color:#fff; }
+  .btn-red    { background:var(--red); color:#fff; }
+
+  .detail-stats { display:flex;gap:0.5rem;margin-bottom:1.25rem; }
+  .det-stat { flex:1;background:var(--bg); border-radius:10px;padding:0.75rem; text-align:center; }
+  .det-val  { font-size:1.1rem;font-weight:800;margin-bottom:0.15rem; }
+  .det-lbl  { font-size:0.68rem;color:var(--muted);font-weight:500; }
+  .log-section { margin-top:1.25rem; }
+  .log-title { font-size:0.82rem;font-weight:700;color:var(--muted); margin-bottom:0.6rem;padding-bottom:0.4rem; border-bottom:1px solid var(--border); display:flex;align-items:center;gap:0.4rem; }
+  .log-empty { font-size:0.8rem;color:var(--muted);text-align:center; padding:0.75rem;background:var(--bg);border-radius:8px; }
+  .log-item { display:flex;justify-content:space-between;align-items:center; padding:0.5rem 0.75rem; background:var(--bg); border-radius:8px; margin-bottom:0.4rem; font-size:0.8rem; }
+  .log-date { color:var(--muted); }
+  .log-note { color:var(--muted);font-size:0.72rem; }
+  .log-gb   { font-weight:700; }
+  .det-actions { display:flex;gap:0.5rem;margin-top:1.25rem; }
+  .det-actions .modal-btn { margin-top:0; }
+
+  .no-data      { text-align:center;color:var(--muted);padding:3rem 1rem;font-size:0.9rem; }
+  .no-data-icon { font-size:2.5rem;margin-bottom:0.5rem; }
+
+  @media (max-width:640px) {
+    .stats-grid { grid-template-columns:repeat(2,1fr);gap:0.6rem; }
+    .content { padding:0.9rem; }
+    .cust-stats { gap:0.3rem; }
+    .cst-val { font-size:0.75rem; }
+    .detail-stats { flex-wrap:wrap; }
+    .det-stat { min-width:calc(33% - 0.4rem); }
+    .det-actions { flex-wrap:wrap; }
+  }
+  @media (min-width:641px) {
+    .overlay { align-items:center; }
+    .modal   { border-radius:20px; animation:scaleIn 0.25s ease; }
+    @keyframes scaleIn { from{transform:scale(0.95);opacity:0} to{transform:scale(1);opacity:1} }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== CONFIG BANNER ===== -->
+<div id="configBanner">
+  <div class="config-card">
+    <h2>⚙️ إعداد Supabase</h2>
+    <p>أدخل بيانات مشروعك على Supabase. ستُحفظ في المتصفح ولن تُرسل لأي مكان.</p>
+    <label>Project URL</label>
+    <input id="cfgUrl" type="text" placeholder="https://xxxx.supabase.co" dir="ltr">
+    <label>Anon Public Key</label>
+    <input id="cfgKey" type="text" placeholder="eyJhbGciOiJIUzI1NiIs..." dir="ltr">
+    <button class="config-save" onclick="saveConfig()">حفظ والمتابعة ←</button>
+    <div class="config-note">
+      🔑 ستجد هذه البيانات في:<br>
+      Supabase Dashboard → Settings → API
+    </div>
+  </div>
+</div>
+
+<!-- ===== LOGIN ===== -->
+<div id="loginScreen">
+  <div class="login-card" id="loginCard">
+    <div class="login-icon">📶</div>
+    <div class="login-title">نظام إدارة الإنترنت</div>
+    <div class="login-sub">تسجيل الدخول للمتابعة</div>
+    <div class="login-field">
+      <input type="email" id="loginUser" placeholder="البريد الإلكتروني" autocomplete="off" dir="ltr">
+    </div>
+    <div class="login-field">
+      <input type="password" id="loginPass" placeholder="كلمة المرور">
+      <button class="toggle-pw" onclick="togglePw()" id="pwToggle">👁</button>
+    </div>
+    <button class="login-btn" onclick="doLogin()">دخول</button>
+    <div class="login-error" id="loginError">البريد أو كلمة المرور غير صحيحة</div>
+    <div class="login-config-link" onclick="showConfig()">⚙️ تغيير إعدادات Supabase</div>
+  </div>
+</div>
+
+<!-- ===== LOADING ===== -->
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text">جاري التحميل...</div>
+</div>
+
+<!-- ===== APP ===== -->
+<div id="app">
+  <header class="header">
+    <div class="header-brand">
+      <span class="header-icon">📶</span>
+      <div>
+        <div class="header-title">إدارة الإنترنت</div>
+        <div class="header-sub">لوحة التحكم</div>
+      </div>
+    </div>
+    <div class="header-meta">
+      <span class="header-count" id="headerCount">0 مشترك</span>
+      <button class="logout-btn" onclick="doLogout()">خروج</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab(0)" id="tab0">🏠 الرئيسية</button>
+    <button class="tab-btn" onclick="switchTab(1)" id="tab1">👥 المشتركون</button>
+    <button class="tab-btn" onclick="switchTab(2)" id="tab2">📊 تقرير الشهر</button>
+  </div>
+
+  <div class="content">
+    <div class="tab-panel active" id="panel0">
+      <div class="stats-grid" id="statsGrid"></div>
+      <div class="chart-card">
+        <div class="card-title">📈 أعلى 6 مشتركين استهلاكاً</div>
+        <div class="bar-chart-wrap" id="barChart"></div>
+      </div>
+      <div id="warnSection"></div>
+    </div>
+    <div class="tab-panel" id="panel1">
+      <div class="search-row">
+        <input class="search-input" id="searchInput" placeholder="🔍 بحث بالاسم أو الرقم..." oninput="renderCustomers()">
+        <button class="add-btn" onclick="openModal('addModal')">+ إضافة</button>
+      </div>
+      <div class="customers-list" id="customersList"></div>
+    </div>
+    <div class="tab-panel" id="panel2">
+      <div class="report-summary" id="reportSummary"></div>
+      <div class="report-table"   id="reportTable"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- ADD -->
+<div class="overlay" id="addModal" onclick="overlayClose(event,'addModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div><div class="modal-title">إضافة مشترك جديد</div></div>
+      <button class="close-btn" onclick="closeModal('addModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">الاسم الكامل *</label>
+      <input class="form-input" id="addName" placeholder="محمد علي">
+    </div>
+    <div class="form-group">
+      <label class="form-label">رقم الجوال</label>
+      <input class="form-input" id="addPhone" placeholder="0501234567" type="tel">
+    </div>
+    <button class="modal-btn btn-blue" onclick="addCustomer()">إضافة المشترك</button>
+  </div>
+</div>
+
+<!-- TOPUP -->
+<div class="overlay" id="topupModal" onclick="overlayClose(event,'topupModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">تجديد جيجات</div>
+        <div class="modal-sub" id="topupName"></div>
+      </div>
+      <button class="close-btn" onclick="closeModal('topupModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">عدد الجيجات *</label>
+      <input class="form-input" id="topupGb" type="number" min="0.1" step="0.5" placeholder="10">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ملاحظة</label>
+      <input class="form-input" id="topupNote" placeholder="اختياري">
+    </div>
+    <button class="modal-btn btn-blue" onclick="addTopUp()">إضافة الجيجات</button>
+  </div>
+</div>
+
+<!-- USAGE -->
+<div class="overlay" id="usageModal" onclick="overlayClose(event,'usageModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">تسجيل استهلاك</div>
+        <div class="modal-sub" id="usageName"></div>
+      </div>
+      <button class="close-btn" onclick="closeModal('usageModal')">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">الجيجات المستهلكة *</label>
+      <input class="form-input" id="usageGb" type="number" min="0.1" step="0.5" placeholder="5">
+    </div>
+    <div class="form-group">
+      <label class="form-label">ملاحظة</label>
+      <input class="form-input" id="usageNote" placeholder="اختياري">
+    </div>
+    <button class="modal-btn btn-violet" onclick="addUsage()">تسجيل الاستهلاك</button>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div class="overlay" id="detailModal" onclick="overlayClose(event,'detailModal')">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="detailTitle">تفاصيل المشترك</div>
+        <div class="modal-sub"   id="detailPhone"></div>
+      </div>
+      <button class="close-btn" onclick="closeModal('detailModal')">✕</button>
+    </div>
+    <div class="detail-stats" id="detailStats"></div>
+    <div class="progress-wrap" style="margin-bottom:1rem">
+      <div class="progress-bar" id="detailProgress"></div>
+    </div>
+    <div class="log-section">
+      <div class="log-title">📥 سجل التجديدات</div>
+      <div id="detailTopups"></div>
+    </div>
+    <div class="log-section">
+      <div class="log-title">📤 سجل الاستهلاك</div>
+      <div id="detailUsages"></div>
+    </div>
+    <div class="det-actions">
+      <button class="modal-btn btn-blue"   onclick="detailTopup()">+ تجديد</button>
+      <button class="modal-btn btn-violet" onclick="detailUsage()">تسجيل استهلاك</button>
+      <button class="modal-btn btn-red"    onclick="deleteCustomer()">🗑 حذف</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// =============================================
+// CONFIG — Supabase credentials stored in localStorage
+// =============================================
+const CFG_KEY = 'supa-config';
+
+function getConfig() {
+  try { return JSON.parse(localStorage.getItem(CFG_KEY)) || null; } catch { return null; }
+}
+
+function saveConfig() {
+  const url = document.getElementById('cfgUrl').value.trim().replace(/\/$/, '');
+  const key = document.getElementById('cfgKey').value.trim();
+  if (!url || !key) { alert('الرجاء إدخال الـ URL والـ Key'); return; }
+  localStorage.setItem(CFG_KEY, JSON.stringify({ url, key }));
+  initSupabase(url, key);
+  hideBanner();
+  showLoginScreen();
+}
+
+function showConfig() {
+  const cfg = getConfig();
+  if (cfg) {
+    document.getElementById('cfgUrl').value = cfg.url;
+    document.getElementById('cfgKey').value = cfg.key;
+  }
+  document.getElementById('configBanner').style.display = 'flex';
+  document.getElementById('loginScreen').style.display  = 'none';
+}
+
+function hideBanner() {
+  document.getElementById('configBanner').style.display = 'none';
+}
+
+function showLoginScreen() {
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// =============================================
+// SUPABASE CLIENT
+// =============================================
+let supabase = null;
+
+function initSupabase(url, key) {
+  supabase = window.supabase.createClient(url, key);
+}
+
+// =============================================
+// BOOT
+// =============================================
+window.addEventListener('load', async () => {
+  const cfg = getConfig();
+  if (!cfg) { return; /* show config banner */ }
+  hideBanner();
+  initSupabase(cfg.url, cfg.key);
+
+  // Check existing session
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    showApp();
+    await renderAll();
+  } else {
+    showLoginScreen();
+  }
+});
+
+// =============================================
+// AUTH
+// =============================================
+function togglePw() {
+  const inp = document.getElementById('loginPass');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function doLogin() {
+  const email = document.getElementById('loginUser').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  if (!email || !pass) { showLoginError('الرجاء إدخال البريد وكلمة المرور'); return; }
+
+  showLoading(true);
+  const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+  showLoading(false);
+
+  if (error) {
+    showLoginError('البريد أو كلمة المرور غير صحيحة');
+  } else {
+    hideLoginError();
+    showApp();
+    await renderAll();
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('loginUser').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+});
+
+async function doLogout() {
+  await supabase.auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  showLoginScreen();
+}
+
+function showLoginError(msg) {
+  const err  = document.getElementById('loginError');
+  const card = document.getElementById('loginCard');
+  err.textContent = msg;
+  err.style.display = 'block';
+  card.classList.remove('shake');
+  void card.offsetWidth;
+  card.classList.add('shake');
+}
+
+function hideLoginError() {
+  document.getElementById('loginError').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+}
+
+// =============================================
+// LOADING
+// =============================================
+function showLoading(v) {
+  document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none';
+}
+
+// =============================================
+// DATA LAYER — Supabase queries
+// =============================================
+
+// استرجاع كل المشتركين مع سجلاتهم
+async function fetchAllData() {
+  const { data: customers, error: ce } = await supabase
+    .from('customers')
+    .select(`
+      id, name, phone, created_at,
+      top_ups ( id, gb, note, created_at ),
+      usage_logs ( id, gb, note, created_at )
+    `)
+    .order('created_at', { ascending: true });
+
+  if (ce) { console.error(ce); return []; }
+  return customers || [];
+}
+
+async function fetchCustomer(id) {
+  const { data, error } = await supabase
+    .from('customers')
+    .select(`
+      id, name, phone, created_at,
+      top_ups ( id, gb, note, created_at ),
+      usage_logs ( id, gb, note, created_at )
+    `)
+    .eq('id', id)
+    .single();
+  if (error) { console.error(error); return null; }
+  return data;
+}
+
+// =============================================
+// HELPERS
+// =============================================
+function calcCustomer(c) {
+  const allocated = (c.top_ups   || []).reduce((s, t) => s + Number(t.gb), 0);
+  const consumed  = (c.usage_logs|| []).reduce((s, u) => s + Number(u.gb), 0);
+  const remaining = allocated - consumed;
+  const pct = allocated > 0 ? (consumed / allocated) * 100 : 0;
+  return { allocated, consumed, remaining, pct };
+}
+
+function statusBadge(pct, allocated) {
+  if (allocated === 0) return { label: 'بدون باقة', cls: 'badge-none' };
+  if (pct >= 90) return { label: 'حرج',    cls: 'badge-crit' };
+  if (pct >= 70) return { label: 'تحذير',  cls: 'badge-warn' };
+  return              { label: 'جيد',     cls: 'badge-good' };
+}
+
+function progClass(pct) {
+  if (pct >= 90) return 'prog-red';
+  if (pct >= 70) return 'prog-amber';
+  return 'prog-green';
+}
+
+function fmtDate(d) {
+  return new Date(d).toLocaleDateString('ar-SA', { year:'numeric', month:'short', day:'numeric' });
+}
+
+// =============================================
+// TABS
+// =============================================
+let activeTab = 0;
+let cachedData = [];
+
+function switchTab(i) {
+  activeTab = i;
+  document.querySelectorAll('.tab-btn').forEach((b, idx) => b.classList.toggle('active', idx === i));
+  document.querySelectorAll('.tab-panel').forEach((p, idx) => p.classList.toggle('active', idx === i));
+}
+
+// =============================================
+// RENDER ALL
+// =============================================
+async function renderAll() {
+  showLoading(true);
+  cachedData = await fetchAllData();
+  showLoading(false);
+  document.getElementById('headerCount').textContent = cachedData.length + ' مشترك';
+  renderDashboard(cachedData);
+  renderCustomers();
+  renderReport(cachedData);
+}
+
+// =============================================
+// DASHBOARD
+// =============================================
+function renderDashboard(data) {
+  const totAllocated = data.reduce((s, c) => s + calcCustomer(c).allocated, 0);
+  const totConsumed  = data.reduce((s, c) => s + calcCustomer(c).consumed, 0);
+  const critCount    = data.filter(c => calcCustomer(c).pct >= 80).length;
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#e0f2fe">👥</div>
+      <div class="stat-info">
+        <div class="stat-val" style="color:var(--primary)">${data.length}</div>
+        <div class="stat-label">إجمالي المشتركين</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#d1fae5">📦</div>
+      <div class="stat-info">
+        <div class="stat-val" style="color:var(--accent)">${totAllocated.toFixed(1)}</div>
+        <div class="stat-label">جيجات متاحة (GB)</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#ede9fe">📊</div>
+      <div class="stat-info">
+        <div class="stat-val" style="color:var(--violet)">${totConsumed.toFixed(1)}</div>
+        <div class="stat-label">إجمالي الاستهلاك (GB)</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#fee2e2">⚠️</div>
+      <div class="stat-info">
+        <div class="stat-val" style="color:var(--red)">${critCount}</div>
+        <div class="stat-label">على وشك الانتهاء</div>
+      </div>
+    </div>
+  `;
+
+  const top6 = [...data]
+    .map(c => ({ c, calc: calcCustomer(c) }))
+    .sort((a, b) => b.calc.consumed - a.calc.consumed)
+    .slice(0, 6);
+
+  const maxConsumed = top6.length > 0 ? Math.max(...top6.map(x => x.calc.consumed)) : 1;
+
+  document.getElementById('barChart').innerHTML = top6.length === 0
+    ? '<div style="color:var(--muted);font-size:.85rem;text-align:center;padding:2rem">لا توجد بيانات</div>'
+    : top6.map(({ c, calc }) => {
+        const h   = maxConsumed > 0 ? Math.max((calc.consumed / maxConsumed) * 100, 4) : 4;
+        const col = calc.pct >= 90 ? '#ef4444' : calc.pct >= 70 ? '#f59e0b' : '#10b981';
+        return `
+          <div class="bar-item">
+            <div class="bar-val">${calc.consumed.toFixed(1)}</div>
+            <div class="bar-col-wrap">
+              <div class="bar-col" style="height:${h}px;background:${col}"></div>
+            </div>
+            <div class="bar-name">${c.name.split(' ')[0]}</div>
+          </div>
+        `;
+      }).join('');
+
+  const warns = data.filter(c => calcCustomer(c).pct >= 80);
+  const warnEl = document.getElementById('warnSection');
+  if (warns.length === 0) { warnEl.innerHTML = ''; return; }
+  warnEl.innerHTML = `
+    <div class="warn-card">
+      <div class="warn-title">⚠️ مشتركون على وشك الانتهاء (${warns.length})</div>
+      ${warns.map(c => {
+        const calc = calcCustomer(c);
+        return `
+          <div class="warn-item">
+            <span class="warn-name">${c.name}</span>
+            <span class="warn-rem">متبقي ${calc.remaining.toFixed(1)} GB (${calc.pct.toFixed(0)}%)</span>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+// =============================================
+// CUSTOMERS
+// =============================================
+function renderCustomers() {
+  const q = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+  const filtered = q
+    ? cachedData.filter(c => c.name.toLowerCase().includes(q) || (c.phone||'').includes(q))
+    : cachedData;
+
+  const el = document.getElementById('customersList');
+  if (filtered.length === 0) {
+    el.innerHTML = `<div class="no-data"><div class="no-data-icon">📭</div>${q ? 'لا توجد نتائج' : 'لا يوجد مشتركون بعد'}</div>`;
+    return;
+  }
+
+  el.innerHTML = filtered.map(c => {
+    const calc  = calcCustomer(c);
+    const badge = statusBadge(calc.pct, calc.allocated);
+    const pc    = progClass(calc.pct);
+    const pct   = Math.min(calc.pct, 100);
+    return `
+      <div class="cust-card">
+        <div class="cust-header">
+          <div class="cust-info">
+            <div class="cust-name">${c.name}</div>
+            <div class="cust-phone">${c.phone || '—'}</div>
+          </div>
+          <span class="badge ${badge.cls}">${badge.label}</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar ${pc}" style="width:${pct}%"></div>
+        </div>
+        <div class="cust-stats">
+          <div class="cust-stat">
+            <div class="cst-val">${calc.consumed.toFixed(1)}</div>
+            <div class="cst-lbl">استهلك (GB)</div>
+          </div>
+          <div class="cust-stat">
+            <div class="cst-val">${calc.remaining.toFixed(1)}</div>
+            <div class="cst-lbl">متبقي (GB)</div>
+          </div>
+          <div class="cust-stat">
+            <div class="cst-val">${calc.allocated.toFixed(1)}</div>
+            <div class="cst-lbl">المجموع (GB)</div>
+          </div>
+        </div>
+        <div class="cust-actions">
+          <button class="btn-topup" onclick="openTopup('${c.id}')">+ تجديد جيجات</button>
+          <button class="btn-usage" onclick="openUsage('${c.id}')">تسجيل استهلاك</button>
+          <button class="btn-detail" onclick="openDetail('${c.id}')">⌄</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// =============================================
+// REPORT
+// =============================================
+function renderReport(data) {
+  const totA = data.reduce((s, c) => s + calcCustomer(c).allocated, 0);
+  const totC = data.reduce((s, c) => s + calcCustomer(c).consumed, 0);
+  const totR = totA - totC;
+
+  document.getElementById('reportSummary').innerHTML = `
+    <div class="rep-stat">
+      <div class="rep-val">${totA.toFixed(1)}</div>
+      <div class="rep-lbl">إجمالي GB</div>
+    </div>
+    <div class="rep-divider"></div>
+    <div class="rep-stat">
+      <div class="rep-val" style="color:#f87171">${totC.toFixed(1)}</div>
+      <div class="rep-lbl">مستهلك</div>
+    </div>
+    <div class="rep-divider"></div>
+    <div class="rep-stat">
+      <div class="rep-val" style="color:#6ee7b7">${totR.toFixed(1)}</div>
+      <div class="rep-lbl">متبقي</div>
+    </div>
+  `;
+
+  const sorted = [...data]
+    .map(c => ({ c, calc: calcCustomer(c) }))
+    .sort((a, b) => b.calc.consumed - a.calc.consumed);
+
+  document.getElementById('reportTable').innerHTML = sorted.map(({ c, calc }) => {
+    const badge = statusBadge(calc.pct, calc.allocated);
+    const pc    = progClass(calc.pct);
+    const pct   = Math.min(calc.pct, 100);
+    return `
+      <div class="rep-row">
+        <div class="rep-row-top">
+          <div>
+            <div class="rep-name">${c.name}</div>
+            <div class="rep-nums">استهلك ${calc.consumed.toFixed(1)} GB من أصل ${calc.allocated.toFixed(1)} GB — متبقي ${calc.remaining.toFixed(1)} GB</div>
+          </div>
+          <span class="badge ${badge.cls}">${calc.pct.toFixed(0)}%</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar ${pc}" style="width:${pct}%"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// =============================================
+// MODALS
+// =============================================
+function openModal(id)  { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function overlayClose(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+// ADD CUSTOMER
+async function addCustomer() {
+  const name  = document.getElementById('addName').value.trim();
+  if (!name) { alert('الرجاء إدخال الاسم'); return; }
+  const phone = document.getElementById('addPhone').value.trim();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  const { error } = await supabase
+    .from('customers')
+    .insert({ name, phone, owner_id: user.id });
+
+  if (error) { alert('خطأ: ' + error.message); return; }
+
+  document.getElementById('addName').value  = '';
+  document.getElementById('addPhone').value = '';
+  closeModal('addModal');
+  await renderAll();
+}
+
+// TOPUP
+let currentId = null;
+
+function openTopup(id) {
+  currentId = id;
+  const c = cachedData.find(x => x.id === id);
+  document.getElementById('topupName').textContent = c.name;
+  document.getElementById('topupGb').value   = '';
+  document.getElementById('topupNote').value = '';
+  openModal('topupModal');
+}
+
+async function addTopUp() {
+  const gb = parseFloat(document.getElementById('topupGb').value);
+  if (!gb || gb <= 0) { alert('الرجاء إدخال عدد الجيجات'); return; }
+  const note = document.getElementById('topupNote').value.trim();
+
+  const { error } = await supabase
+    .from('top_ups')
+    .insert({ customer_id: currentId, gb, note });
+
+  if (error) { alert('خطأ: ' + error.message); return; }
+  closeModal('topupModal');
+  await renderAll();
+  if (document.getElementById('detailModal').classList.contains('open')) openDetail(currentId);
+}
+
+// USAGE
+function openUsage(id) {
+  currentId = id;
+  const c = cachedData.find(x => x.id === id);
+  document.getElementById('usageName').textContent = c.name;
+  document.getElementById('usageGb').value   = '';
+  document.getElementById('usageNote').value = '';
+  openModal('usageModal');
+}
+
+async function addUsage() {
+  const gb = parseFloat(document.getElementById('usageGb').value);
+  if (!gb || gb <= 0) { alert('الرجاء إدخال عدد الجيجات'); return; }
+  const note = document.getElementById('usageNote').value.trim();
+
+  const { error } = await supabase
+    .from('usage_logs')
+    .insert({ customer_id: currentId, gb, note });
+
+  if (error) { alert('خطأ: ' + error.message); return; }
+  closeModal('usageModal');
+  await renderAll();
+  if (document.getElementById('detailModal').classList.contains('open')) openDetail(currentId);
+}
+
+// DETAIL
+async function openDetail(id) {
+  currentId = id;
+  // Refresh from cache
+  const c = cachedData.find(x => x.id === id);
+  if (!c) return;
+
+  const calc = calcCustomer(c);
+  const pc   = progClass(calc.pct);
+  const pct  = Math.min(calc.pct, 100);
+
+  document.getElementById('detailTitle').textContent = c.name;
+  document.getElementById('detailPhone').textContent = c.phone || '';
+
+  document.getElementById('detailStats').innerHTML = `
+    <div class="det-stat">
+      <div class="det-val" style="color:var(--accent)">${calc.allocated.toFixed(1)}</div>
+      <div class="det-lbl">المخصص (GB)</div>
+    </div>
+    <div class="det-stat">
+      <div class="det-val" style="color:var(--violet)">${calc.consumed.toFixed(1)}</div>
+      <div class="det-lbl">المستهلك (GB)</div>
+    </div>
+    <div class="det-stat">
+      <div class="det-val" style="color:${calc.remaining < 0 ? 'var(--red)' : 'var(--primary)'}">${calc.remaining.toFixed(1)}</div>
+      <div class="det-lbl">المتبقي (GB)</div>
+    </div>
+  `;
+
+  document.getElementById('detailProgress').className = `progress-bar ${pc}`;
+  document.getElementById('detailProgress').style.width = pct + '%';
+
+  const topupEl = document.getElementById('detailTopups');
+  const topups  = [...(c.top_ups || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  topupEl.innerHTML = topups.length === 0
+    ? '<div class="log-empty">لا توجد تجديدات</div>'
+    : topups.map(t => `
+        <div class="log-item">
+          <div>
+            <div class="log-date">${fmtDate(t.created_at)}</div>
+            ${t.note ? `<div class="log-note">${t.note}</div>` : ''}
+          </div>
+          <div class="log-gb" style="color:var(--accent)">+${Number(t.gb).toFixed(1)} GB</div>
+        </div>
+      `).join('');
+
+  const usageEl = document.getElementById('detailUsages');
+  const usages  = [...(c.usage_logs || [])].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+  usageEl.innerHTML = usages.length === 0
+    ? '<div class="log-empty">لا توجد سجلات استهلاك</div>'
+    : usages.map(u => `
+        <div class="log-item">
+          <div>
+            <div class="log-date">${fmtDate(u.created_at)}</div>
+            ${u.note ? `<div class="log-note">${u.note}</div>` : ''}
+          </div>
+          <div class="log-gb" style="color:var(--violet)">${Number(u.gb).toFixed(1)} GB</div>
+        </div>
+      `).join('');
+
+  openModal('detailModal');
+}
+
+function detailTopup()  { closeModal('detailModal'); openTopup(currentId); }
+function detailUsage()  { closeModal('detailModal'); openUsage(currentId); }
+
+async function deleteCustomer() {
+  if (!confirm('هل أنت متأكد من حذف هذا المشترك؟ سيُحذف كل سجلاته أيضاً.')) return;
+  const { error } = await supabase
+    .from('customers')
+    .delete()
+    .eq('id', currentId);
+
+  if (error) { alert('خطأ: ' + error.message); return; }
+  closeModal('detailModal');
+  await renderAll();
+}
+</script>
+</body>
+</html>
