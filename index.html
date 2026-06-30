@@ -9,6 +9,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <!-- Supabase JS v2 -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ============================================================
+  // ⚙️ بيانات مشروع Supabase الخاص بك — عدّل القيمتين هنا فقط
+  // ستجدهما في: Supabase Dashboard → Settings → API
+  // ============================================================
+  const SUPABASE_URL = "https://udjnzsaypjcyxgbjngxe.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkam56c2F5cGpjeXhnYmpuZ3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NTgyOTUsImV4cCI6MjA5ODIzNDI5NX0.ktQoyU0XcPtEkdVF_C06B2yKLyZDZV5hSLnR-z9DFrs";
+</script>
 <style>
   :root {
     --bg: #f0f4f8;
@@ -296,23 +304,6 @@
 </head>
 <body>
 
-<!-- ===== CONFIG BANNER ===== -->
-<div id="configBanner">
-  <div class="config-card">
-    <h2>⚙️ إعداد Supabase</h2>
-    <p>أدخل بيانات مشروعك على Supabase. ستُحفظ في المتصفح ولن تُرسل لأي مكان.</p>
-    <label>Project URL</label>
-    <input id="cfgUrl" type="text" placeholder="https://xxxx.supabase.co" dir="ltr">
-    <label>Anon Public Key</label>
-    <input id="cfgKey" type="text" placeholder="eyJhbGciOiJIUzI1NiIs..." dir="ltr">
-    <button class="config-save" onclick="saveConfig()">حفظ والمتابعة ←</button>
-    <div class="config-note">
-      🔑 ستجد هذه البيانات في:<br>
-      Supabase Dashboard → Settings → API
-    </div>
-  </div>
-</div>
-
 <!-- ===== LOGIN ===== -->
 <div id="loginScreen">
   <div class="login-card" id="loginCard">
@@ -328,7 +319,6 @@
     </div>
     <button class="login-btn" onclick="doLogin()">دخول</button>
     <div class="login-error" id="loginError">البريد أو كلمة المرور غير صحيحة</div>
-    <div class="login-config-link" onclick="showConfig()">⚙️ تغيير إعدادات Supabase</div>
   </div>
 </div>
 
@@ -481,61 +471,33 @@
 
 <script>
 // =============================================
-// CONFIG — Supabase credentials stored in localStorage
-// =============================================
-const CFG_KEY = 'supa-config';
-
-function getConfig() {
-  try { return JSON.parse(localStorage.getItem(CFG_KEY)) || null; } catch { return null; }
-}
-
-function saveConfig() {
-  const url = document.getElementById('cfgUrl').value.trim().replace(/\/$/, '');
-  const key = document.getElementById('cfgKey').value.trim();
-  if (!url || !key) { alert('الرجاء إدخال الـ URL والـ Key'); return; }
-  localStorage.setItem(CFG_KEY, JSON.stringify({ url, key }));
-  initSupabase(url, key);
-  hideBanner();
-  showLoginScreen();
-}
-
-function showConfig() {
-  const cfg = getConfig();
-  if (cfg) {
-    document.getElementById('cfgUrl').value = cfg.url;
-    document.getElementById('cfgKey').value = cfg.key;
-  }
-  document.getElementById('configBanner').style.display = 'flex';
-  document.getElementById('loginScreen').style.display  = 'none';
-}
-
-function hideBanner() {
-  document.getElementById('configBanner').style.display = 'none';
-}
-
-function showLoginScreen() {
-  document.getElementById('loginScreen').style.display = 'flex';
-}
-
-// =============================================
-// SUPABASE CLIENT
+// SUPABASE CLIENT — uses constants defined in <head>
 // =============================================
 let supabase = null;
 
-function initSupabase(url, key) {
-  supabase = window.supabase.createClient(url, key);
+function initSupabase() {
+  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 // =============================================
 // BOOT
 // =============================================
 window.addEventListener('load', async () => {
-  const cfg = getConfig();
-  if (!cfg) { return; /* show config banner */ }
-  hideBanner();
-  initSupabase(cfg.url, cfg.key);
+  if (!SUPABASE_URL || SUPABASE_URL.includes('YOUR-PROJECT-REF') ||
+      !SUPABASE_ANON_KEY || SUPABASE_ANON_KEY.includes('YOUR-ANON')) {
+    document.body.innerHTML = `
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0f172a;padding:1rem;">
+        <div style="background:#1e293b;border-radius:20px;padding:2rem;max-width:420px;color:#fca5a5;text-align:center;font-family:'Cairo',sans-serif;line-height:1.8;">
+          ⚠️ لم يتم إعداد بيانات Supabase.<br>
+          افتح الملف وعدّل قيمتي <code style="color:#fff">SUPABASE_URL</code> و
+          <code style="color:#fff">SUPABASE_ANON_KEY</code> في أعلى الملف.
+        </div>
+      </div>`;
+    return;
+  }
 
-  // Check existing session
+  initSupabase();
+
   const { data: { session } } = await supabase.auth.getSession();
   if (session) {
     showApp();
@@ -594,6 +556,10 @@ function showLoginError(msg) {
 
 function hideLoginError() {
   document.getElementById('loginError').style.display = 'none';
+}
+
+function showLoginScreen() {
+  document.getElementById('loginScreen').style.display = 'flex';
 }
 
 function showApp() {
