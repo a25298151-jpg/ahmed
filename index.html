@@ -14,8 +14,8 @@
   // ⚙️ بيانات مشروع Supabase الخاص بك — عدّل القيمتين هنا فقط
   // ستجدهما في: Supabase Dashboard → Settings → API
   // ============================================================
-  const SUPABASE_URL = "https://udjnzsaypjcyxgbjngxe.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkam56c2F5cGpjeXhnYmpuZ3hlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2NTgyOTUsImV4cCI6MjA5ODIzNDI5NX0.ktQoyU0XcPtEkdVF_C06B2yKLyZDZV5hSLnR-z9DFrs";
+  const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
+  const SUPABASE_ANON_KEY = "YOUR-ANON-PUBLIC-KEY";
 </script>
 <style>
   :root {
@@ -473,10 +473,10 @@
 // =============================================
 // SUPABASE CLIENT — uses constants defined in <head>
 // =============================================
-let supabase = null;
+let sb = null;
 
 function initSupabase() {
-  supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
 // =============================================
@@ -498,7 +498,7 @@ window.addEventListener('load', async () => {
 
   initSupabase();
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { session } } = await sb.auth.getSession();
   if (session) {
     showApp();
     await renderAll();
@@ -521,7 +521,7 @@ async function doLogin() {
   if (!email || !pass) { showLoginError('الرجاء إدخال البريد وكلمة المرور'); return; }
 
   showLoading(true);
-  const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
   showLoading(false);
 
   if (error) {
@@ -539,7 +539,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function doLogout() {
-  await supabase.auth.signOut();
+  await sb.auth.signOut();
   document.getElementById('app').style.display = 'none';
   showLoginScreen();
 }
@@ -580,7 +580,7 @@ function showLoading(v) {
 
 // استرجاع كل المشتركين مع سجلاتهم
 async function fetchAllData() {
-  const { data: customers, error: ce } = await supabase
+  const { data: customers, error: ce } = await sb
     .from('customers')
     .select(`
       id, name, phone, created_at,
@@ -594,7 +594,7 @@ async function fetchAllData() {
 }
 
 async function fetchCustomer(id) {
-  const { data, error } = await supabase
+  const { data, error } = await sb
     .from('customers')
     .select(`
       id, name, phone, created_at,
@@ -860,8 +860,8 @@ async function addCustomer() {
   if (!name) { alert('الرجاء إدخال الاسم'); return; }
   const phone = document.getElementById('addPhone').value.trim();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const { error } = await supabase
+  const { data: { user } } = await sb.auth.getUser();
+  const { error } = await sb
     .from('customers')
     .insert({ name, phone, owner_id: user.id });
 
@@ -890,7 +890,7 @@ async function addTopUp() {
   if (!gb || gb <= 0) { alert('الرجاء إدخال عدد الجيجات'); return; }
   const note = document.getElementById('topupNote').value.trim();
 
-  const { error } = await supabase
+  const { error } = await sb
     .from('top_ups')
     .insert({ customer_id: currentId, gb, note });
 
@@ -915,7 +915,7 @@ async function addUsage() {
   if (!gb || gb <= 0) { alert('الرجاء إدخال عدد الجيجات'); return; }
   const note = document.getElementById('usageNote').value.trim();
 
-  const { error } = await supabase
+  const { error } = await sb
     .from('usage_logs')
     .insert({ customer_id: currentId, gb, note });
 
@@ -993,7 +993,7 @@ function detailUsage()  { closeModal('detailModal'); openUsage(currentId); }
 
 async function deleteCustomer() {
   if (!confirm('هل أنت متأكد من حذف هذا المشترك؟ سيُحذف كل سجلاته أيضاً.')) return;
-  const { error } = await supabase
+  const { error } = await sb
     .from('customers')
     .delete()
     .eq('id', currentId);
